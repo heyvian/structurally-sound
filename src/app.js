@@ -34,6 +34,9 @@ function readProgress() {
 const state = readProgress();
 const ref = (i, j) => ({ ...units[i].q[j], key: `${i}-${j}`, topic: units[i].title });
 const unitQuestions = units.map((unit, i) => unit.q.map((_, j) => ref(i, j)));
+const calculationCards = lessonPlans.map((plan, i) => ({
+    ...plan.calculation, key: `formula-${i}`, type: 'formula', topic: units[i].title, step: 'Formula walkthrough',
+}));
 const guidedQuestions = lessonPlans.map((plan, i) => plan.guided.map((question, j) => ({
     ...question, key: `guided-${i}-${j}`, topic: units[i].title, step: 'Do it together',
 })));
@@ -71,7 +74,8 @@ const trussExam = trussQs.map((question, j) => ({
     ...question, key: `truss-exam-${j}`, topic: 'Triangular truss analysis',
 }));
 const questionBank = new Map([
-    ...unitQuestions.flat(), ...guidedQuestions.flat(), ...beamPractice, ...beamExam, ...trussPractice, ...trussExam,
+    ...unitQuestions.flat(), ...calculationCards, ...guidedQuestions.flat(),
+    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam,
 ].map(question => [question.key, question]));
 
 let session;
@@ -204,11 +208,11 @@ function startMode(i, mode) {
     let queue;
     if (mode === 'deep') {
         queue = [
-            ...conceptCards(i), workedCard(i), ...guidedQuestions[i],
+            ...conceptCards(i), calculationCards[i], workedCard(i), ...guidedQuestions[i],
             ...practiceCards(current), ...practiceCards(recall, 'Revisit it'),
         ];
     } else if (mode === 'crash') {
-        queue = [quickCard(i), workedCard(i), ...guidedQuestions[i].slice(0, 1),
+        queue = [quickCard(i), calculationCards[i], workedCard(i), ...guidedQuestions[i].slice(0, 1),
             ...practiceCards(representative.slice(0, 3)), ...practiceCards(recall.slice(-1), 'Revisit it')];
     } else {
         const missed = current.filter(q => state.miss[q.key]);
@@ -241,7 +245,7 @@ function finalMenu() {
 }
 
 function startFinalReview() {
-    const queue = unitOrder.flatMap(i => [quickCard(i), workedCard(i), ...guidedQuestions[i].slice(0, 1),
+    const queue = unitOrder.flatMap(i => [quickCard(i), calculationCards[i], workedCard(i), ...guidedQuestions[i].slice(0, 1),
         ...practiceCards(unitQuestions[i].filter(q => q.type !== 'choice').slice(0, 1))]);
     begin(queue, { mode: 'final', title: 'Guided cumulative review' });
 }
@@ -325,6 +329,16 @@ function options(question, multiple = false) {
 
 function interaction(question) {
     switch (question.type) {
+        case 'formula':
+            return `<p>${question.setup}</p>
+                <p class="formula">${question.symbol} = ${question.expression}</p>
+                <fieldset class="formula-fields"><legend>Enter the values from the problem</legend>
+                    <div class="station-grid">${question.inputs.map(([symbol, label, unit], i) =>
+                        `<label>${symbol} · ${label}${unit ? ` (${unit})` : ''}
+                            <input type="number" step="any" inputmode="${label.startsWith('Signed') ? 'text' : 'decimal'}"
+                                data-formula-input="${i}">
+                        </label>`).join('')}</div>
+                </fieldset>`;
         case 'number':
             return `<label class="number-answer">Answer ${question.unit ? `(${question.unit})` : ''}
                 <input id="number-answer" type="number" step="any" inputmode="decimal"></label>`;
@@ -381,22 +395,34 @@ function render() {
         <div class="toolbar">
             ${!instruction && !exam ? button('Hint', 'hint') : ''}
             ${!instruction && exam ? button('Skip question', 'skip') : ''}
-            ${button(instruction ? 'Continue' : exam ? 'Record answer' : 'Check answer',
+            ${button(instruction ? 'Continue' : exam ? 'Record answer' : question.type === 'formula' ? 'Calculate' : 'Check answer',
                 instruction ? 'next' : 'check', '', 'primary')}
         </div>
     </article>`);
     if (instruction) return;
     setAnswer(null);
     if (question.type === 'graph') showGraphAnswer = bindGraph(question, setAnswer);
+    if (question.type === 'formula') {
+        const fields = [...app.querySelectorAll('[data-formula-input]')];
+        for (const field of fields) {
+            field.addEventListener('input', () => {
+                field.removeAttribute('aria-invalid');
+                const values = fields.map(input => input.valueAsNumber);
+                setAnswer(values.every(Number.isFinite) ? values : null);
+            });
+        }
+    }
     if (question.type === 'number') {
         const field = document.getElementById('number-answer');
         field.addEventListener('input', () => setAnswer(field.valueAsNumber));
-        field.addEventListener('keydown', event => {
-            if (event.key === 'Enter' && !app.querySelector('[data-action="check"]')?.disabled && Number.isFinite(answer)) {
-                checkAnswer();
-            }
-        });
     }
+    app.querySelectorAll('#number-answer, [data-formula-input]').forEach(field => {
+        field.addEventListener('keydown', event => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            checkAnswer();
+        });
+    });
     if (question.type === 'steel') {
         const field = document.getElementById('profile-answer');
         field.addEventListener('change', () => setAnswer(field.value === '' ? null : Number(field.value)));
@@ -463,12 +489,37 @@ function recordProgress(question, correct) {
     }
 }
 
+function formulaResult(question, values) {
+    const fields = [...app.querySelectorAll('[data-formula-input]')];
+    const invalid = fields.filter((field, i) => {
+        const wrong = values[i] !== question.inputs[i][3];
+        field.setAttribute('aria-invalid', String(wrong));
+        return wrong;
+    });
+    if (invalid.length) {
+        document.getElementById('feedback').innerHTML =
+            '<p class="feedback bad">Check the highlighted values against the problem and the units beside each field.</p>';
+        invalid[0].focus();
+        return null;
+    }
+
+    const display = value => fmt(value).replace(/^-/, '−');
+    const substitution = question.substitute(...values.map(display));
+    const result = question.calculate(...values);
+    return `<p class="formula formula-result">
+        <span>${question.symbol} = ${substitution}</span>
+        <strong>= ${display(result)} ${question.unit}</strong>
+    </p>`;
+}
+
 function checkAnswer(skipped = false) {
     const check = app.querySelector('[data-action="check"]');
     if (!check || (!skipped && check.disabled)) return;
 
     const question = session.queue[session.cursor];
-    const correct = !skipped && grade(question, answer);
+    const calculation = question.type === 'formula' ? formulaResult(question, answer) : '';
+    if (calculation === null) return;
+    const correct = !skipped && (question.type === 'formula' || grade(question, answer));
     session.results.push({ question, correct, skipped });
     if (session.mode === 'exam') {
         next();
@@ -483,7 +534,7 @@ function checkAnswer(skipped = false) {
         message = `${story} <a href="${source}" target="_blank" rel="noopener noreferrer">Case study</a>`;
     }
     const feedback = document.getElementById('feedback');
-    feedback.innerHTML = `<div class="feedback ${correct ? '' : 'bad'}">
+    feedback.innerHTML = `${calculation}<div class="feedback ${correct ? '' : 'bad'}">
         <div class="valmini">${val}</div><p><strong>${correct ? 'Structurally sound!' : 'Here’s how to work it out'}</strong></p>
         <p>${question.explain}</p><small>${message}</small><div class="clear"></div></div>`;
     if (question.type === 'fbd') {

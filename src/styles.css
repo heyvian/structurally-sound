@@ -239,6 +239,8 @@ progress { width: 100%; height: 12px; margin: 14px 0; accent-color: var(--green)
 }
 .worked ol { margin: 0; padding-left: 1.2rem; }
 .formula { font-family: var(--mono); }
+.formula-result { display: flex; flex-wrap: wrap; gap: 4px 12px; overflow-wrap: anywhere; }
+.formula-result strong { color: var(--green); }
 .options { display: grid; gap: 9px; margin: 15px 0; }
 .option { text-align: left; }
 .option[aria-pressed="true"] { background: var(--lime); border-color: var(--green); }
@@ -258,11 +260,13 @@ input[type="number"], select {
 
 input[type="number"] { font-family: var(--mono); }
 .number-answer, .profile-answer { max-width: 26rem; margin: 16px 0; }
-.match-fields, .diagram-fields { margin: 14px 0; min-width: 0; border: 1px solid var(--line); padding: 10px 12px 12px; }
+.match-fields, .diagram-fields, .formula-fields { margin: 14px 0; min-width: 0; border: 1px solid var(--line); padding: 10px 12px 12px; }
 .match-fields label + label { margin-top: 10px; }
 legend { padding: 0 6px; font: 700 13px var(--mono); }
 .station-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 9px; }
 .station-grid label { font-size: 13px; }
+.formula-fields label { display: grid; grid-template-rows: 1fr auto; }
+.formula-fields input[aria-invalid="true"] { border-color: #a7462e; background: #fff0cb; }
 
 .diagram {
     display: block;

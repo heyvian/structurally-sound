@@ -7,6 +7,16 @@ const lessonPlans = [
     {
         goal: 'Trace a load to the ground and convert area loads into the forces a beam or column receives.',
         figure: 'load',
+        calculation: {
+            prompt: 'Turn floor pressure into a beam load',
+            setup: 'A floor carries 2.5 kPa. The tributary width of its interior beam is 3 m. Find the load per metre of beam.',
+            symbol: 'w', expression: 'q × bₜ', unit: 'kN/m',
+            inputs: [['q', 'Floor pressure', 'kPa', 2.5], ['bₜ', 'Tributary width', 'm', 3]],
+            calculate: (q, width) => q * width,
+            substitute: (q, width) => `(${q} kN/m²) × (${width} m)`,
+            hint: 'Enter the area pressure in q and the width of floor carried by the beam in bₜ.',
+            explain: 'Multiplying pressure by width leaves kN per metre of beam. You would multiply by loaded length to find the total force.',
+        },
         concepts: [
             ['Follow the load path', 'Every element that receives a force needs a way to pass it on. Roof sheathing transfers pressure to joists. Joists pass their end reactions to beams, beams pass theirs to columns, and foundations spread the column forces into the ground. Start at the loaded surface and draw each transfer. Lateral loads need a continuous path through diaphragms and bracing or walls.'],
             ['Name the action and its units', 'Dead load is permanent weight. Occupancy and movable contents are live loads. Snow, wind pressure or suction, retained earth or water, and earthquake inertia each have different directions and load patterns. A point force is in kN, a line load in kN/m, and a pressure in kPa, which equals kN/m². Use 9.81 N/kg to convert mass to weight when gravity is the action.'],
@@ -30,6 +40,16 @@ const lessonPlans = [
     {
         goal: 'Draw, resolve, and add 2D forces with the correct signs and angle reference.',
         figure: 'vector',
+        calculation: {
+            prompt: 'Find a horizontal force component',
+            setup: 'An 18 kN force acts at 120° counterclockwise from +x. Find its signed horizontal component.',
+            symbol: 'Fₓ', expression: 'F × cos(θ)', unit: 'kN',
+            inputs: [['F', 'Force magnitude', 'kN', 18], ['θ', 'Angle from +x', '°', 120]],
+            calculate: (force, angle) => force * Math.cos(angle * Math.PI / 180),
+            substitute: (force, angle) => `${force} × cos(${angle}°)`,
+            hint: 'Use the full counterclockwise angle from +x. The force magnitude is positive.',
+            explain: 'Cosine is negative at 120°, so the horizontal component points left.',
+        },
         concepts: [
             ['Give every force a direction', 'A magnitude of 10 kN is incomplete until its line of action and sense are known. Draw an arrow at the point of application and choose axes. Forces can slide along their own line of action in a rigid-body equilibrium model. Moving one to a different parallel line changes its moment.'],
             ['Resolve into components', 'Project the arrow onto x and y. With θ measured counterclockwise from +x, Fₓ = F cos θ and Fᵧ = F sin θ. If the angle is measured from vertical, the vertical component is adjacent. Check signs from the arrow, especially when the stated angle is relative to −x or −y.'],
@@ -52,6 +72,16 @@ const lessonPlans = [
     {
         goal: 'Isolate a 2D body, replace restraints with reactions, and tell when a support layout can resist motion.',
         figure: 'supports',
+        calculation: {
+            prompt: 'Balance a horizontal load',
+            setup: 'A pin at A and a horizontal roller at B support a beam. A 12 kN applied force points right. Take right as positive.',
+            symbol: 'Aₓ', expression: '−Fₓ', unit: 'kN',
+            inputs: [['Fₓ', 'Signed applied horizontal force', 'kN', 12]],
+            calculate: force => -force,
+            substitute: force => `−(${force})`,
+            hint: 'Enter the applied force in Fₓ. The leading minus sign finds the opposing reaction.',
+            explain: 'The roller supplies only a vertical reaction. Horizontal equilibrium requires Aₓ + Fₓ = 0, so the pin reacts to the left.',
+        },
         concepts: [
             ['Make a cut around one body', 'A free-body diagram shows only the chosen body and forces acting on it. Remove its surroundings and replace each interaction with an external force or moment. Draw loads where they act and include dimensions to their lines of action. Forces within the isolated body cancel in pairs.'],
             ['Match a reaction to a prevented motion', 'A free planar body can translate in x, translate in y, and rotate. A pin blocks both translations and allows rotation. A frictionless roller reacts perpendicular to its supporting surface. A fixed support restrains both translations and rotation, so include a reaction couple.'],
@@ -77,6 +107,16 @@ const lessonPlans = [
     {
         goal: 'Replace distributed loads, take moments with consistent signs, and solve support reactions.',
         beam: { L: 6, a: 0, b: 6, points: [{ x: 2, p: 12 }], udls: [{ s: 3, e: 6, w: 4 }] },
+        calculation: {
+            prompt: 'Replace a triangular load with its resultant',
+            setup: 'A triangular load rises from zero to 7 kN/m across 8 m. Find the magnitude of its equivalent point force.',
+            symbol: 'R', expression: '½ × wₘₐₓ × L', unit: 'kN',
+            inputs: [['wₘₐₓ', 'Peak load intensity', 'kN/m', 7], ['L', 'Loaded length', 'm', 8]],
+            calculate: (intensity, length) => .5 * intensity * length,
+            substitute: (intensity, length) => `½ × (${intensity} kN/m) × (${length} m)`,
+            hint: 'The area of the load triangle gives the resultant. Use its height and base.',
+            explain: 'This gives the force magnitude. Place it one-third of the loaded length from the heavy end when you calculate support reactions.',
+        },
         concepts: [
             ['Use a perpendicular lever arm', 'A moment measures rotation tendency about a point. Use M = Fd⊥ where d⊥ is the perpendicular distance from that point to the line of action. A force whose line passes through the point has zero moment about it. Choose counterclockwise positive and keep it throughout.'],
             ['Replace distributed loads for equilibrium', 'The area under a load-intensity diagram gives its resultant. A uniform load w over L gives wL at its midpoint. A triangular load gives wₘₐₓL/2 at one-third of the length from the heavy end. Apply the resultant at the centroid only for equivalent external effect. Keep the original load distribution when drawing internal diagrams.'],
@@ -99,6 +139,16 @@ const lessonPlans = [
     {
         goal: 'Translate loads into shear and bending moment diagrams and find their governing values.',
         beam: beams[2],
+        calculation: {
+            prompt: 'Find the change in bending moment',
+            setup: 'Shear stays at −8 kN over a 2.5 m segment. Find the signed change in moment from left to right.',
+            symbol: 'ΔM', expression: 'V × Δx', unit: 'kN·m',
+            inputs: [['V', 'Signed shear', 'kN', -8], ['Δx', 'Segment length', 'm', 2.5]],
+            calculate: (shear, length) => shear * length,
+            substitute: (shear, length) => `(${shear} kN) × (${length} m)`,
+            hint: 'Keep the negative sign on V. Segment length is positive.',
+            explain: 'The negative area under the shear diagram makes the bending moment decrease by 20 kN·m.',
+        },
         concepts: [
             ['Cut the beam to see internal forces', 'At a cut, the exposed shear and bending moment keep the remaining beam segment in equilibrium. Work from left to right. An upward concentrated force jumps V up and a downward one jumps V down. A uniform downward load gives dV/dx = −w. Between loads, V stays constant.'],
             ['Build M from V', 'The slope dM/dx equals V, so the signed area under V between two stations is the change in M. Constant V gives straight M. Linear V gives quadratic M. A point force changes the slope of M without jumping M. An applied couple changes M abruptly. We draw positive V above zero and positive sagging M below zero.'],
@@ -120,6 +170,16 @@ const lessonPlans = [
     {
         goal: 'Relate force, geometry, and deformation, then check a simple section against allowable stress.',
         figure: 'stress',
+        calculation: {
+            prompt: 'Calculate the stress in a bar',
+            setup: 'A bar with a 200 mm² cross-section carries a 16 kN tensile force. Find its average axial stress.',
+            symbol: 'σ', expression: 'P ÷ A', unit: 'MPa',
+            inputs: [['P', 'Tensile force', 'N', 16000], ['A', 'Cross-sectional area', 'mm²', 200]],
+            calculate: (force, area) => force / area,
+            substitute: (force, area) => `(${force} N) ÷ (${area} mm²)`,
+            hint: 'Multiply 16 kN by 1,000 to enter the force in newtons.',
+            explain: 'One newton per square millimetre equals one megapascal, so the numerical value carries straight over to MPa.',
+        },
         concepts: [
             ['Separate stress from strain', 'Average axial stress is σ = P/A when an axial force P is distributed over area A. In SI, 1 N/mm² is 1 MPa. Strain ε = ΔL/L₀ is the change in length divided by original length, so it has no units. Tension stretches, compression shortens, and shear makes adjacent parts slide.'],
             ['Read an engineering stress–strain curve', 'The straight initial region has slope E = Δσ/Δε. Elastic deformation recovers on unloading. Yield marks the onset of significant permanent strain. Ultimate tensile strength is the peak engineering stress. Necking often follows, and the final point marks fracture. A stiffer material has a higher E, while a stronger one resists more stress before the relevant limit.'],
@@ -143,6 +203,16 @@ const lessonPlans = [
     {
         goal: 'Calculate centroid, I and S, then read a real W-shape table to compare candidate members.',
         figure: 'section',
+        calculation: {
+            prompt: 'Calculate the second moment of area',
+            setup: 'A rectangular section is 60 mm wide and 100 mm deep. Find Iₓ about its horizontal centroidal axis.',
+            symbol: 'Iₓ', expression: 'b × h³ ÷ 12', unit: 'mm⁴',
+            inputs: [['b', 'Width parallel to the axis', 'mm', 60], ['h', 'Depth perpendicular to the axis', 'mm', 100]],
+            calculate: (width, depth) => width * depth ** 3 / 12,
+            substitute: (width, depth) => `(${width} mm) × (${depth} mm)³ ÷ 12`,
+            hint: 'The dimension perpendicular to the axis is h, the one the formula cubes.',
+            explain: 'One length times a cubed length gives mm⁴. The depth has a stronger effect on Iₓ than the width.',
+        },
         concepts: [
             ['Locate the centroid before choosing an axis', 'Split a composite section into non-overlapping basic areas. Choose a datum, mark each area and centroid, then compute ȳ = ΣAᵢyᵢ/ΣAᵢ. Treat cutouts as negative area and use a consistent datum. The centroid lies on any symmetry axis.'],
             ['Measure how far area lies from the axis', 'The second moment of area Iₓ = ∫y² dA weights area by squared distance from x. For a rectangle about its own horizontal centroidal axis, Iₓ = bh³/12. To move each part to the full section’s axis, add Aᵢdᵢ² before summing. Subtract both terms for a hole. Use mm⁴ and check which dimension is cubed.'],
@@ -166,6 +236,17 @@ const lessonPlans = [
     {
         goal: 'Estimate elastic buckling and bending deflection and explain what changes their magnitude.',
         figure: 'column',
+        calculation: {
+            prompt: 'Calculate an Euler buckling load',
+            setup: 'A 3,000 mm pin-ended steel column has E = 200,000 MPa and I = 420,000 mm⁴ about its weak axis. Use the pin–pin effective length factor.',
+            symbol: 'Pcr', expression: 'π² × E × I ÷ (K × L)²', unit: 'N',
+            inputs: [['E', 'Elastic modulus', 'MPa', 200000], ['I', 'Weak-axis second moment of area', 'mm⁴', 420000],
+                ['K', 'Effective length factor', '', 1], ['L', 'Unbraced length', 'mm', 3000]],
+            calculate: (modulus, inertia, factor, length) => Math.PI ** 2 * modulus * inertia / (factor * length) ** 2,
+            substitute: (modulus, inertia, factor, length) => `π² × ${modulus} × ${inertia} ÷ (${factor} × ${length})²`,
+            hint: 'For pinned ends at both ends, K = 1. Enter the other values in MPa and mm-based units.',
+            explain: 'Using MPa as N/mm² and the lengths in millimetres gives a critical load in newtons. Divide by 1,000 for kN.',
+        },
         concepts: [
             ['Distinguish strength, stability, and stiffness', 'A short compression member can reach material limits before buckling. A slender member can deflect sideways under load below yield. A beam can also deflect too much while remaining strong and stable. Treat these as separate checks.'],
             ['Determine the effective length and governing axis', 'Euler’s ideal elastic critical load is Pcr = π²EI/(KL)². L is the unbraced length and K represents end restraint. Ideal values include 1 for pin–pin, 2 for fixed–free, 0.5 for fixed–fixed, and about 0.7 for fixed–pin. Check both axes with their own I and effective lengths. Slenderness is KL/r, with r = √(I/A).'],
@@ -189,6 +270,16 @@ const lessonPlans = [
     {
         goal: 'Solve individual truss member forces using joints and interpret tension, compression, and zero force.',
         figure: 'truss',
+        calculation: {
+            prompt: 'Solve for a truss diagonal at the apex',
+            setup: 'A 30 kN load points down at the apex of a symmetric truss. Both diagonals slope at 30° to the horizontal. Take tension as positive.',
+            symbol: 'F', expression: '−P ÷ (2 × sin(θ))', unit: 'kN',
+            inputs: [['P', 'Downward load magnitude', 'kN', 30], ['θ', 'Diagonal angle from horizontal', '°', 30]],
+            calculate: (load, angle) => -load / (2 * Math.sin(angle * Math.PI / 180)),
+            substitute: (load, angle) => `−${load} ÷ (2 × sin(${angle}°))`,
+            hint: 'Enter the positive load magnitude. The minus sign in the formula accounts for the tension assumption at the apex.',
+            explain: 'Each diagonal balances half the vertical load. A negative axial force means the two diagonals are in compression.',
+        },
         concepts: [
             ['Know the ideal truss model', 'Treat members as straight bars joined by frictionless pins. Apply the idealized loads at joints. With no load between its ends, a member transmits only equal and opposite axial forces along its own axis. Verify the arrangement is stable before analysis.'],
             ['Start outside, then move from joint to joint', 'Draw the entire truss free-body diagram to find support reactions. At a joint, assume unknown member forces pull away in tension. Resolve them into horizontal and vertical components, then apply ΣFₓ = ΣFᵧ = 0. Pick a joint with at most two independent unknowns. Carry each solved axial force to the next joint with the arrow reversed along the member.'],
@@ -211,6 +302,16 @@ const lessonPlans = [
     {
         goal: 'Choose a structural model and carry the result from loading to a meaningful member check.',
         beam: beams[0],
+        calculation: {
+            prompt: 'Turn bending demand into a section requirement',
+            setup: 'The maximum bending moment magnitude is 42 kN·m and allowable bending stress is 140 MPa. Find the required elastic section modulus.',
+            symbol: 'Sreq', expression: '|M| ÷ fₐ', unit: 'mm³',
+            inputs: [['|M|', 'Maximum bending moment magnitude', 'N·mm', 42000000], ['fₐ', 'Allowable bending stress', 'MPa', 140]],
+            calculate: (moment, stress) => moment / stress,
+            substitute: (moment, stress) => `(${moment} N·mm) ÷ (${stress} N/mm²)`,
+            hint: 'One kN·m is one million N·mm. Convert the moment before entering it.',
+            explain: 'This gives the minimum S for the bending check. Compare it with table values in the same units.',
+        },
         concepts: [
             ['Choose the model before the formula', 'Identify the load path and decide which elements to isolate. A simply supported beam, a cantilever, a two-force truss member, and a column have different force paths and relevant equations. Sketch the restraints and determine which actions can be resisted.'],
             ['Transfer results without losing their meaning', 'Solve external equilibrium before internal actions. A truss member’s signed axial force tells you whether to check tension or compression. A beam’s V and M extrema locate the governing shear and bending demands. Retain signed values and convert units where one calculation feeds the next.'],
@@ -232,6 +333,16 @@ const lessonPlans = [
     {
         goal: 'Use right triangles, algebra, and consistent units before solving any structural problem.',
         figure: 'triangle',
+        calculation: {
+            prompt: 'Calculate the length of a diagonal',
+            setup: 'A brace rises 8 m over a 15 m horizontal run. Use the two perpendicular legs to find the diagonal length.',
+            symbol: 'H', expression: '√(a² + b²)', unit: 'm',
+            inputs: [['a', 'Horizontal leg', 'm', 15], ['b', 'Vertical leg', 'm', 8]],
+            calculate: (run, rise) => Math.hypot(run, rise),
+            substitute: (run, rise) => `√(${run}² + ${rise}²)`,
+            hint: 'The horizontal run and vertical rise are the two legs. Both are already in metres.',
+            explain: 'Squaring the legs gives square metres. Taking the square root converts the result back to metres.',
+        },
         concepts: [
             ['Label the triangle relative to the angle', 'The hypotenuse is opposite the right angle. For the angle θ you selected, the far leg is opposite and the near leg is adjacent. Then sin θ = O/H, cos θ = A/H, and tan θ = O/A. Label the sides before selecting a ratio.'],
             ['Solve for an unknown side or angle', 'Pythagoras gives H² = O² + A². Use an inverse trig function when the ratio is known and the angle is unknown. Inverse tangent returns an angle, while 1/tan is a reciprocal. Set the calculator to degrees for angles written with °. To isolate an unknown, apply the same algebraic operation to both sides.'],
