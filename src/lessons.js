@@ -1,0 +1,271 @@
+function matchQuestion(prompt, pairs, explain) {
+    return { type: 'match', prompt, pairs, answer: pairs.map((_, i) => i), explain,
+        hint: 'Start with the pair you can justify most easily, then work through the others.' };
+}
+
+const lessonPlans = [
+    {
+        goal: 'Trace a load to the ground and convert area loads into the forces a beam or column receives.',
+        figure: 'load',
+        concepts: [
+            ['Follow the load path', 'Every element that receives a force needs a way to pass it on. Roof sheathing transfers pressure to joists. Joists pass their end reactions to beams, beams pass theirs to columns, and foundations spread the column forces into the ground. Start at the loaded surface and draw each transfer. Lateral loads need a continuous path through diaphragms and bracing or walls.'],
+            ['Name the action and its units', 'Dead load is permanent weight. Occupancy and movable contents are live loads. Snow, wind pressure or suction, retained earth or water, and earthquake inertia each have different directions and load patterns. A point force is in kN, a line load in kN/m, and a pressure in kPa, which equals kN/m². Use 9.81 N/kg to convert mass to weight when gravity is the action.'],
+            ['Assign tributary area', 'For parallel equally spaced beams, divide the floor at the midlines between them. An interior beam receives half a bay from each side. Multiply pressure by its tributary width for kN/m. Multiply the line load by its loaded length for kN. At an edge, count only the floor that actually spans to the beam.'],
+            ['Recognize dynamic actions', 'Static calculations balance forces at rest. Wind gusts and ground acceleration change over time. Earthquake inertia depends on mass and acceleration. The natural period T = 1/f is the time in seconds for one cycle of vibration. Forcing near a natural frequency can amplify motion, so a single gravity load case does not describe every design action.'],
+        ],
+        example: {
+            setup: 'A floor carries 3 kPa over a 6 m simply supported interior beam. Parallel beams are 4 m apart on both sides.',
+            steps: ['Take 2 m from each side. The tributary width is 4 m.', 'Multiply 3 kN/m² × 4 m to get 12 kN/m along the beam.', 'The total is 12 × 6 = 72 kN. The uniform load has its resultant at midspan.', 'Each support carries 36 kN for this load case. Collect both reactions to check that they sum to 72 kN.'],
+        },
+        guided: [
+            N('An edge beam carries one side of a 3 m bay. The floor pressure is 4 kPa. Find the beam’s line load.', 6,
+                'The tributary width is half the bay, 1.5 m. The line load is 4 × 1.5 = 6 kN/m.', 'Sketch the midline between the two beams.', 'kN/m'),
+            N('That 6 kN/m acts along a 5 m edge beam. Find the total load transferred to its supports.', 30,
+                '6 kN/m × 5 m = 30 kN.', 'Multiply line intensity by loaded length.', 'kN'),
+        ],
+        quick: ['Draw the load path to ground.', 'Identify point force, line load, or area pressure before converting.', 'For one-way gravity loading, mark half-bays and multiply pressure × width × length as needed.'],
+        pitfalls: ['Do not use an entire bay on each side of an interior beam.', 'Convert kilograms to newtons before adding weight to other forces.'],
+        sheet: 'q [kPa = kN/m²] × tributary width [m] = w [kN/m]. Then w × loaded length [m] = W [kN].',
+    },
+    {
+        goal: 'Draw, resolve, and add 2D forces with the correct signs and angle reference.',
+        figure: 'vector',
+        concepts: [
+            ['Give every force a direction', 'A magnitude of 10 kN is incomplete until its line of action and sense are known. Draw an arrow at the point of application and choose axes. Forces can slide along their own line of action in a rigid-body equilibrium model. Moving one to a different parallel line changes its moment.'],
+            ['Resolve into components', 'Project the arrow onto x and y. With θ measured counterclockwise from +x, Fₓ = F cos θ and Fᵧ = F sin θ. If the angle is measured from vertical, the vertical component is adjacent. Check signs from the arrow, especially when the stated angle is relative to −x or −y.'],
+            ['Add vectors and recover the direction', 'Add x components to form Rₓ and y components to form Rᵧ. Find magnitude with Pythagoras. Use atan2(Rᵧ, Rₓ) or a reference angle and quadrant to find direction. A force triangle also works: in the cosine law use the included interior angle, and in the sine law pair each side with its opposite angle.'],
+        ],
+        example: {
+            setup: 'A 10 kN force acts 30° above +x. A second force acts 4 kN to the left at the same point.',
+            steps: ['Project the first arrow: Fₓ = 10 cos 30° = 8.66 kN, Fᵧ = 10 sin 30° = 5.00 kN.', 'Add signed components. Rₓ = 8.66 − 4 = 4.66 kN and Rᵧ = 5.00 kN.', 'R = √(4.66² + 5²) ≈ 6.84 kN.', 'Both components are positive, so the direction is arctan(5/4.66) ≈ 47.0° above +x.'],
+        },
+        guided: [
+            N('A 20 kN force points 30° above −x. Enter its signed horizontal component.', -20 * Math.cos(Math.PI / 6),
+                'The horizontal magnitude is 20 cos 30° = 17.32 kN. The arrow points left, so Fₓ = −17.32 kN.', 'Mark leftward as negative.', 'kN'),
+            N('The same force has Fₓ ≈ −17.32 kN. Add an 8 kN rightward force. What is the signed resultant Rₓ?', 8 - 20 * Math.cos(Math.PI / 6),
+                'Rₓ = −17.32 + 8 = −9.32 kN. The resultant still points left and upward.', 'Add signed components along the same axis.', 'kN'),
+        ],
+        quick: ['Sketch axes and the actual angle reference.', 'Resolve each arrow, then add each axis separately.', 'Use √(Rₓ² + Rᵧ²) and confirm the direction’s quadrant.'],
+        pitfalls: ['Cosine goes with the side adjacent to the given angle.', 'A calculator’s arctan alone cannot distinguish opposite quadrants.'],
+        sheet: 'From +x, Fₓ = F cos θ and Fᵧ = F sin θ. R = √(Rₓ² + Rᵧ²). Mark the quadrant next to your component sketch.',
+    },
+    {
+        goal: 'Isolate a 2D body, replace restraints with reactions, and tell when a support layout can resist motion.',
+        figure: 'supports',
+        concepts: [
+            ['Make a cut around one body', 'A free-body diagram shows only the chosen body and forces acting on it. Remove its surroundings and replace each interaction with an external force or moment. Draw loads where they act and include dimensions to their lines of action. Forces within the isolated body cancel in pairs.'],
+            ['Match a reaction to a prevented motion', 'A free planar body can translate in x, translate in y, and rotate. A pin blocks both translations and allows rotation. A frictionless roller reacts perpendicular to its supporting surface. A fixed support restrains both translations and rotation, so include a reaction couple.'],
+            ['Check stability and equilibrium', 'For a stationary rigid body, ΣFₓ = 0, ΣFᵧ = 0, and ΣM = 0. Three unknown reaction components can often be solved with these three equations. Their lines of action must also resist every possible motion. Parallel reactions leave translation in a perpendicular direction unrestrained. Concurrent force reactions cannot resist a couple about their intersection.'],
+        ],
+        example: {
+            setup: 'A horizontal beam has a pin at A, a horizontal roller at B, and a 10 kN downward load between them.',
+            steps: ['Draw the beam alone. Replace the pin with Aₓ right and Aᵧ up, and the roller with Bᵧ up.', 'Add the 10 kN load at its application point and dimension its offset from A.', 'There is no horizontal applied force, so ΣFₓ = 0 gives Aₓ = 0. Retain Aₓ on the initial free-body diagram.', 'Use moments about A to find Bᵧ and then vertical balance for Aᵧ.'],
+        },
+        guided: [
+            matchQuestion('Match each ideal restraint with its reactions.', [
+                ['Pin', 'Two force components'], ['Roller', 'One force normal to its surface'],
+                ['Fixed support', 'Two force components and a couple'],
+            ], 'Reactions represent blocked motions. A pin rotates, a roller slides along its surface, and a fixed support does neither.'),
+            Q('Two frictionless rollers sit on horizontal ground. Which motion can the beam make without resistance?',
+                ['Horizontal translation', 'Vertical translation', 'None in the plane'], 0,
+                'Both reactions are vertical. The beam is free to translate horizontally.', 'Draw the two reaction directions.'),
+        ],
+        quick: ['Isolate one body and label known forces.', 'Replace the supports with unknown reactions and include lever arms.', 'Check restraint directions and apply all three equilibrium equations.'],
+        pitfalls: ['A roller’s reaction depends on its surface orientation.', 'An assumed reaction arrow can be opposite to the solved direction.'],
+        sheet: 'ΣFₓ = 0, ΣFᵧ = 0, ΣM = 0. Draw pin, roller, and fixed reactions together as a tiny legend.',
+    },
+    {
+        goal: 'Replace distributed loads, take moments with consistent signs, and solve support reactions.',
+        beam: { L: 6, a: 0, b: 6, points: [{ x: 2, p: 12 }], udls: [{ s: 3, e: 6, w: 4 }] },
+        concepts: [
+            ['Use a perpendicular lever arm', 'A moment measures rotation tendency about a point. Use M = Fd⊥ where d⊥ is the perpendicular distance from that point to the line of action. A force whose line passes through the point has zero moment about it. Choose counterclockwise positive and keep it throughout.'],
+            ['Replace distributed loads for equilibrium', 'The area under a load-intensity diagram gives its resultant. A uniform load w over L gives wL at its midpoint. A triangular load gives wₘₐₓL/2 at one-third of the length from the heavy end. Apply the resultant at the centroid only for equivalent external effect. Keep the original load distribution when drawing internal diagrams.'],
+            ['Account for couples and solve', 'Equal opposite parallel forces at separate lines of action form a couple with zero net force and moment Fd. Include that moment about every origin. For a pin and roller, take moments about the pin to eliminate both pin unknowns. Solve the remaining equations and check moments about the other support.'],
+        ],
+        example: {
+            setup: 'The 6 m span has 12 kN at x = 2 m and a 4 kN/m patch from x = 3 m to B.',
+            steps: ['The patch resultant is 4 × 3 = 12 kN at x = 4.5 m.', 'Counterclockwise positive about A gives 6Rᵦ − 12×2 − 12×4.5 = 0.', 'Rᵦ = 13 kN. Vertical equilibrium gives Rₐ = 24 − 13 = 11 kN.', 'About B, the loads turn counterclockwise: 12×4 + 12×1.5 − 11×6 = 0.'],
+        },
+        guided: [
+            N('A 6 m triangular load is zero at A and reaches 9 kN/m at B. Find its resultant magnitude.', 27,
+                'The triangle area is ½ × 6 × 9 = 27 kN.', 'Compute the area beneath the load-intensity diagram.', 'kN'),
+            N('The 27 kN resultant acts 2 m from B on the 6 m span. Find the upward reaction at B.', 18,
+                'Its lever arm about A is 6 − 2 = 4 m. Rᵦ = 27×4/6 = 18 kN.', 'Take moments about A. Measure both lever arms from A.', 'kN'),
+        ],
+        quick: ['Replace each distributed load with a magnitude and location.', 'Take moments about a point that eliminates unknown reaction forces.', 'Solve force balance and check moments about another point.'],
+        pitfalls: ['The centroid of a triangular load is closer to the heavy end.', 'A reaction can have zero moment about A and still appear in ΣF.'],
+        sheet: 'M = Fd⊥ [kN·m]. Uniform resultant wL at L/2. Triangle resultant wₘₐₓL/2 at L/3 from heavy end.',
+    },
+    {
+        goal: 'Translate loads into shear and bending moment diagrams and find their governing values.',
+        beam: beams[2],
+        concepts: [
+            ['Cut the beam to see internal forces', 'At a cut, the exposed shear and bending moment keep the remaining beam segment in equilibrium. Work from left to right. An upward concentrated force jumps V up and a downward one jumps V down. A uniform downward load gives dV/dx = −w. Between loads, V stays constant.'],
+            ['Build M from V', 'The slope dM/dx equals V, so the signed area under V between two stations is the change in M. Constant V gives straight M. Linear V gives quadratic M. A point force changes the slope of M without jumping M. An applied couple changes M abruptly. We draw positive V above zero and positive sagging M below zero.'],
+            ['Check critical stations', 'Evaluate V on both sides of point forces. Check M at ends, changes in load, and anywhere continuous V crosses zero. Moment at a simple support at the end of a beam is zero without an end couple. At a support inside a beam with an overhang, moment can be nonzero.'],
+        ],
+        example: {
+            setup: 'An 8 m simply supported beam carries 6 kN/m over its full length.',
+            steps: ['Each reaction is 48/2 = 24 kN. V jumps to +24 kN at A.', 'Between supports V = 24 − 6x. It crosses zero at x = 4 m and reaches −24 kN just before B.', 'M starts at zero. The triangular shear area from 0 to 4 m is ½×4×24 = 48 kN·m, so M peaks there.', 'The negative shear area returns M to zero at B. Sketch a parabola that bows toward +M, which is down in this app.'],
+        },
+        guided: [
+            { ...N('For a 6 m beam with a 12 kN midpoint load, V = +6 kN on the first 3 m. Find M at midspan.',
+                18, 'The area under V is a rectangle: 6 kN × 3 m = +18 kN·m.', 'Integrate shear by taking its area.', 'kN·m'), b: center },
+            graphQuestion(center, 'M'),
+        ],
+        quick: ['Solve reactions and mark stations at force jumps and changes in w.', 'Build V from jumps and slopes, then M from signed V areas.', 'Check end values and find maxima at stations and zero-shear locations.'],
+        pitfalls: ['Do not replace a UDL with one point load when sketching V and M.', 'Plotting positive sagging below the baseline changes the drawing, while its numerical sign stays positive.'],
+        sheet: 'dV/dx = −w, dM/dx = V. Point force → V jump. Couple → M jump. Check each V = 0 and every critical station.',
+    },
+    {
+        goal: 'Relate force, geometry, and deformation, then check a simple section against allowable stress.',
+        figure: 'stress',
+        concepts: [
+            ['Separate stress from strain', 'Average axial stress is σ = P/A when an axial force P is distributed over area A. In SI, 1 N/mm² is 1 MPa. Strain ε = ΔL/L₀ is the change in length divided by original length, so it has no units. Tension stretches, compression shortens, and shear makes adjacent parts slide.'],
+            ['Read an engineering stress–strain curve', 'The straight initial region has slope E = Δσ/Δε. Elastic deformation recovers on unloading. Yield marks the onset of significant permanent strain. Ultimate tensile strength is the peak engineering stress. Necking often follows, and the final point marks fracture. A stiffer material has a higher E, while a stronger one resists more stress before the relevant limit.'],
+            ['Check an allowable value', 'Use the specified allowable stress for the problem. If a classroom example sets fₐ = 0.60fᵧ, use that factor for that example. For concentric axial load require A ≥ P/fₐ. For elastic bending about the specified axis require S ≥ |M|/fₐ. Structural selection also requires checks such as stability, shear, and serviceability.'],
+        ],
+        example: {
+            setup: 'A 1,000 mm steel bar has A = 200 mm², E = 200,000 MPa, and a 30 kN tensile force. Take fᵧ = 250 MPa and fₐ = 0.60fᵧ.',
+            steps: ['Convert P = 30,000 N. σ = 30,000/200 = 150 MPa.', 'ε = σ/E = 150/200,000 = 0.00075.', 'ΔL = εL₀ = 0.75 mm. Here the elastic model is valid because the stress is below yield.', 'fₐ = 150 MPa, so this area just meets the stated axial stress limit.'],
+        },
+        guided: [
+            N('A 150 mm² bar carries 24 kN of concentric tension. Find the average stress.', 160,
+                'σ = 24,000/150 = 160 N/mm² = 160 MPa.', 'Convert kN to N first.', 'MPa'),
+            Q('The allowable stress is 150 MPa and the bar is stressed to 160 MPa. What does the check say?',
+                ['The area is adequate', 'A larger area is required for the same material and load', 'The bar has necessarily fractured'], 1,
+                'The stated allowable stress has been exceeded. This check alone tells you neither failure nor fracture has occurred.'),
+        ],
+        quick: ['Use N and mm for stress calculations in MPa.', 'Read E from the initial straight part of the curve.', 'Compare actual axial or bending stress to the given allowable value.'],
+        pitfalls: ['Convert kN·m to N·mm before dividing by S in mm³.', 'Yield, ultimate strength, fracture, and stiffness describe different things.'],
+        sheet: 'σ = P/A, ε = ΔL/L₀, E = Δσ/Δε in the elastic region. Bending |σ|max = |M|/S.',
+    },
+    {
+        goal: 'Calculate centroid, I and S, then read a real W-shape table to compare candidate members.',
+        figure: 'section',
+        concepts: [
+            ['Locate the centroid before choosing an axis', 'Split a composite section into non-overlapping basic areas. Choose a datum, mark each area and centroid, then compute ȳ = ΣAᵢyᵢ/ΣAᵢ. Treat cutouts as negative area and use a consistent datum. The centroid lies on any symmetry axis.'],
+            ['Measure how far area lies from the axis', 'The second moment of area Iₓ = ∫y² dA weights area by squared distance from x. For a rectangle about its own horizontal centroidal axis, Iₓ = bh³/12. To move each part to the full section’s axis, add Aᵢdᵢ² before summing. Subtract both terms for a hole. Use mm⁴ and check which dimension is cubed.'],
+            ['Find section modulus and read a table', 'S = I/c uses distance to the relevant extreme fibre. For an unsymmetric section check top and bottom separately. For a W-shape, read Iₓ for major-axis stiffness and Sₓ for elastic bending strength. Compare required values in the printed scaled units before using kg/m to rank the eligible rows.'],
+        ],
+        example: {
+            setup: 'A T consists of a 100×20 mm flange over a centred 20×80 mm web. Measure from the bottom.',
+            steps: ['Web A = 1,600 mm² at y = 40 mm. Flange A = 2,000 mm² at y = 90 mm.', 'ȳ = (1,600×40 + 2,000×90)/3,600 = 67.778 mm.', 'Apply bh³/12 + Ad² to each part. Their total Iₓ is 3.142×10⁶ mm⁴.', 'Distances to the bottom and top are 67.778 mm and 32.222 mm. The bottom controls for equal allowable stress, with S ≈ 46.36×10³ mm³.'],
+        },
+        guided: [
+            N('A 100×200 mm rectangle bends about its horizontal centroidal axis. Find Iₓ in millions of mm⁴.',
+                100 * 200 ** 3 / 12 / 1e6, 'Iₓ = 100×200³/12 = 66.667×10⁶ mm⁴.', 'Use the dimension perpendicular to the axis as h.', '10⁶ mm⁴'),
+            N('With Iₓ = 66.667×10⁶ mm⁴ and c = 100 mm, find S in thousands of mm³.', 200 * 100 * 200 / 6 / 1000,
+                'S = Iₓ/c = 666.67×10³ mm³.', 'The outer fibre of this symmetric rectangle is half the depth from the centroid.', '10³ mm³'),
+            steelQ('S', 320, steelSmall),
+        ],
+        quick: ['Use an area-weighted average for the centroid.', 'Sum each local I and its Ad² offset about the full section’s axis.', 'Use S = I/c and compare the correct table column and units before comparing mass.'],
+        pitfalls: ['Do not double-count the flange and web intersection.', 'Iₓ [mm⁴] and Sₓ [mm³] are distinct. Check table powers of ten.'],
+        sheet: 'ȳ = ΣAy/ΣA, Iₓ = Σ(Ic + Ad²), Sₓ = Iₓ/c. For a rectangle Ic = bh³/12. Sketch the datum and x-axis.',
+    },
+    {
+        goal: 'Estimate elastic buckling and bending deflection and explain what changes their magnitude.',
+        figure: 'column',
+        concepts: [
+            ['Distinguish strength, stability, and stiffness', 'A short compression member can reach material limits before buckling. A slender member can deflect sideways under load below yield. A beam can also deflect too much while remaining strong and stable. Treat these as separate checks.'],
+            ['Determine the effective length and governing axis', 'Euler’s ideal elastic critical load is Pcr = π²EI/(KL)². L is the unbraced length and K represents end restraint. Ideal values include 1 for pin–pin, 2 for fixed–free, 0.5 for fixed–fixed, and about 0.7 for fixed–pin. Check both axes with their own I and effective lengths. Slenderness is KL/r, with r = √(I/A).'],
+            ['Estimate elastic beam deflection', 'Flexural rigidity is EI. For an ideal pin–roller beam, a central point force gives δmax = PL³/(48EI) and a full UDL gives 5wL⁴/(384EI). A cantilever tip force gives PL³/(3EI). Use only the formula for the matching load and restraints. Euler’s ideal result assumes a straight, elastic member with ideal restraint. Real columns require an appropriate design method.'],
+        ],
+        example: {
+            setup: 'A pin-ended steel column has E = 200,000 MPa, Imin = 800,000 mm⁴, and L = 4,000 mm.',
+            steps: ['Use N and mm throughout. Here K = 1 and KL = 4,000 mm.', 'Pcr = π² × 200,000 × 800,000 / 4,000² ≈ 98,696 N = 98.70 kN.', 'If the effective length halves, the ideal load becomes four times as large, about 394.8 kN.', 'Check other axes and material limits before drawing a real design conclusion.'],
+        },
+        guided: [
+            N('The same E and I give Pcr = 98.70 kN for pin–pin restraint. What is the fixed–free Euler load for the same physical length?',
+                Math.PI ** 2 * 200000 * 800000 / 8000 ** 2 / 1000,
+                'K doubles from 1 to 2. Pcr falls to a quarter of its original value, 24.67 kN.', 'The effective length is squared in the denominator.', 'kN'),
+            N('A 2,000 mm cantilever carries 3,000 N at its tip. E = 200,000 MPa and I = 6×10⁶ mm⁴. Find tip deflection.',
+                3000 * 2000 ** 3 / (3 * 200000 * 6e6), 'PL³/(3EI) = 6.67 mm.', 'Keep the length cubed in mm³.', 'mm'),
+        ],
+        quick: ['Identify the likely failure or serviceability mode.', 'Compare π²EI/(KL)² about each unbraced axis.', 'Choose deflection expressions from the correct support and load case.'],
+        pitfalls: ['Do not substitute physical length for effective length when K differs from 1.', 'A deflection calculated in metres needs ×1,000 to be reported in mm.'],
+        sheet: 'Pcr = π²EI/(KL)². r = √(I/A). Central simple-beam point load δ = PL³/(48EI). Cantilever tip load δ = PL³/(3EI).',
+    },
+    {
+        goal: 'Solve individual truss member forces using joints and interpret tension, compression, and zero force.',
+        figure: 'truss',
+        concepts: [
+            ['Know the ideal truss model', 'Treat members as straight bars joined by frictionless pins. Apply the idealized loads at joints. With no load between its ends, a member transmits only equal and opposite axial forces along its own axis. Verify the arrangement is stable before analysis.'],
+            ['Start outside, then move from joint to joint', 'Draw the entire truss free-body diagram to find support reactions. At a joint, assume unknown member forces pull away in tension. Resolve them into horizontal and vertical components, then apply ΣFₓ = ΣFᵧ = 0. Pick a joint with at most two independent unknowns. Carry each solved axial force to the next joint with the arrow reversed along the member.'],
+            ['Use shortcuts with their conditions', 'At an unloaded and unsupported joint with two non-collinear members, both forces are zero. With three members and two collinear, the non-collinear member is zero. Both rules require no external load or reaction at that joint. A zero-force member can matter under other load cases. To find only a few members, a section cut and a free-body diagram may be quicker.'],
+        ],
+        example: {
+            setup: 'The 45° triangular truss shown carries 40 kN downward at C. A and B are at the same elevation.',
+            steps: ['The vertical reactions are 20 kN each by symmetry, and the horizontal reaction is zero.', 'At C assume both diagonal members pull down and outward. Horizontal balance makes their forces equal.', 'Vertical balance gives −40 − 2F sin 45° = 0. F = −28.28 kN, so both diagonals are in compression.', 'At A the compression force acts leftward by 20 kN. AB must pull right with +20 kN of tension.'],
+        },
+        guided: [
+            { ...N('At C, the diagonals are inclined at 45° and each carries half of a 40 kN vertical load. Find the signed axial force in AC.',
+                -20 * Math.SQRT2, 'The vertical component magnitude is 20 kN. Divide by sin 45° and use a negative sign for compression.', 'An assumed tensile force at C would pull downward.', 'kN'), fig: 'truss' },
+            Q('At an unloaded joint, two of three members are collinear. What is the non-collinear member force?', ['Zero', 'Equal to the reaction at A', 'Always in compression'], 0,
+                'Only that member has a component perpendicular to the collinear pair. Equilibrium forces its value to zero.'),
+        ],
+        quick: ['Find reactions on the whole truss.', 'Choose a joint with at most two unknown forces and assume they pull away.', 'Transfer each solution, including its sign, and verify both axes at the last joint.'],
+        pitfalls: ['Whole-truss diagrams omit internal member forces.', 'A negative axial answer reverses your assumed tension direction.'],
+        sheet: 'Whole truss → reactions → joints. At a joint ΣFₓ = ΣFᵧ = 0. Positive tension, negative compression. Sketch the two zero-force rules.',
+    },
+    {
+        goal: 'Choose a structural model and carry the result from loading to a meaningful member check.',
+        beam: beams[0],
+        concepts: [
+            ['Choose the model before the formula', 'Identify the load path and decide which elements to isolate. A simply supported beam, a cantilever, a two-force truss member, and a column have different force paths and relevant equations. Sketch the restraints and determine which actions can be resisted.'],
+            ['Transfer results without losing their meaning', 'Solve external equilibrium before internal actions. A truss member’s signed axial force tells you whether to check tension or compression. A beam’s V and M extrema locate the governing shear and bending demands. Retain signed values and convert units where one calculation feeds the next.'],
+            ['Audit the answer', 'Check equilibrium equations and graph endpoints. Read table exponents before picking a member. Compare the predicted response with a quick limit case, such as symmetric loading or no applied load. If an answer is unusual, ask whether assumptions, geometry, units, or an actual structural effect explain it.'],
+        ],
+        example: {
+            setup: 'The 8 m beam shown has 24 kN at x = 2 m and 8 kN/m over the last 4 m.',
+            steps: ['The patch resultant is 32 kN at x = 6 m. Rᵦ = (24×2 + 32×6)/8 = 30 kN and Rₐ = 26 kN.', 'V is +26 before x = 2 m, then +2 until x = 4 m. In the patch it falls to zero at x = 4.25 m.', 'Positive shear area up to x = 4.25 m is 52 + 4 + 0.25 = 56.25 kN·m.', 'At fₐ = 150 MPa, Sreq = 375×10³ mm³. W250×33 is the lightest eligible profile in the workshop table, at 379×10³ mm³.'],
+        },
+        guided: [
+            N('With a beam moment demand of 54 kN·m and allowable stress 150 MPa, find Sreq in thousands of mm³.',
+                360, '54×10⁶ / 150 = 360,000 mm³, or 360×10³ mm³.', 'Convert the moment first, then scale the result.', '10³ mm³'),
+            steelQ('S', 360, steelSmall),
+        ],
+        quick: ['Model the load path and restraints before solving.', 'Use equilibrium and internal actions to find the governing demand.', 'Compare compatible quantities, then check the result independently.'],
+        pitfalls: ['Do not round intermediate reactions before building your diagrams.', 'A bending-only steel check gives a candidate, while other demands still need verification.'],
+        sheet: 'Draw → solve reactions → find internal demand → convert units → size → check. Put the governing units beside each arrow.',
+    },
+    {
+        goal: 'Use right triangles, algebra, and consistent units before solving any structural problem.',
+        figure: 'triangle',
+        concepts: [
+            ['Label the triangle relative to the angle', 'The hypotenuse is opposite the right angle. For the angle θ you selected, the far leg is opposite and the near leg is adjacent. Then sin θ = O/H, cos θ = A/H, and tan θ = O/A. Label the sides before selecting a ratio.'],
+            ['Solve for an unknown side or angle', 'Pythagoras gives H² = O² + A². Use an inverse trig function when the ratio is known and the angle is unknown. Inverse tangent returns an angle, while 1/tan is a reciprocal. Set the calculator to degrees for angles written with °. To isolate an unknown, apply the same algebraic operation to both sides.'],
+            ['Carry the units through', 'Use 1 kN = 1,000 N and 1 m = 1,000 mm. Multiply both conversions for kN·m to N·mm. For squared or fourth-power lengths, raise the conversion factor to the same power. Check the magnitude after every conversion, especially at the interface between beam loads and section properties.'],
+        ],
+        example: {
+            setup: 'A diagonal rises 3 m while running 4 m horizontally. Find its length and angle above horizontal.',
+            steps: ['At the angle from the horizontal, O = 3 and A = 4.', 'The length is √(3² + 4²) = 5 m.', 'Use θ = arctan(3/4) ≈ 36.87°. The same angle gives sin θ = 3/5.', 'A 10 kN force along the diagonal would therefore project to 8 kN horizontally and 6 kN vertically.'],
+        },
+        guided: [
+            N('A brace rises 5 m over a 12 m run. Find its angle above the horizontal.', Math.atan2(5, 12) * 180 / Math.PI,
+                'θ = arctan(5/12) = 22.62°.', 'The ratio opposite/adjacent is tangent.', '°'),
+            N('Convert 2.5 kN·m to N·mm.', 2.5e6,
+                '2.5 × 1,000 N/kN × 1,000 mm/m = 2,500,000 N·mm.', 'Convert force and length separately.', 'N·mm'),
+        ],
+        quick: ['Mark θ, O, A and H on a right-triangle sketch.', 'Use a ratio for a length and inverse trig for an angle.', 'Write the unit conversion as factors that cancel the original units.'],
+        pitfalls: ['Cosine applies to the adjacent leg when the hypotenuse is known.', 'A square metre is 1,000,000 mm² because both sides convert.'],
+        sheet: 'SOH CAH TOA. H² = A² + O². 1 kN·m = 10⁶ N·mm and 1 MPa = 1 N/mm².',
+    },
+];
+
+const unitOrder = [units.indexOf(foundation), ...[...units.keys()].filter(i => units[i] !== foundation)];
+const unitNumber = i => String(unitOrder.indexOf(i)).padStart(2, '0');
+
+units[5].q.push(
+    { type: 'stress', prompt: 'Which marked point is in the initial linear elastic region?', answer: 0,
+        explain: 'A is on the initial straight line. Its slope is E, and removing the load here allows elastic strain to recover.',
+        hint: 'Find a point before yield on the straight part of the curve.' },
+    matchQuestion('Match each part of the stress–strain curve with its meaning.', [
+        ['Elastic region', 'Strain recovers on unloading'],
+        ['Plastic region', 'Some strain remains after unloading'],
+        ['Ultimate tensile strength', 'Maximum engineering stress'],
+    ], 'E is a slope in the elastic region. Yield begins significant plastic deformation. Ultimate strength is a stress value.'),
+);
+
+units[10].q.push(N('Solve 4x + 3 = 19. Find x.', 4,
+    'Subtract 3 from both sides to get 4x = 16, then divide both sides by 4.', 'Undo addition before multiplication.'));

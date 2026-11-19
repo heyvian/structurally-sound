@@ -1,0 +1,129 @@
+const val = '<img class="val-art" src="src/val.svg" alt="Val, a glass tower with expressive eyes">';
+
+let beamFigureNumber = 0;
+function beamFigure(beam, reactions = []) {
+    const { L, a, b, points, udls } = beam;
+    const id = `beam-${beamFigureNumber++}`;
+    const x = position => 48 + position / L * 424;
+    const y = 82;
+    const label = [
+        `Span ${L} metres, pin A at ${a}, roller B at ${b}`,
+        ...points.map(p => `${p.p} kilonewtons downward at ${p.x} metres`),
+        ...udls.map(w => `${w.w} kilonewtons per metre downward from ${w.s} to ${w.e} metres`),
+    ].join('. ');
+    const supports = [a, b].map((position, i) => `
+        <path d="M${x(position)} ${y + 1}l-12 17h24Z" fill="#fff9e8" stroke="#23343a" stroke-width="1.6"/>
+        ${i ? [-6, 6].map(offset => `<circle cx="${x(position) + offset}" cy="${y + 23}" r="3"
+                fill="white" stroke="#23343a"/>`).join('')
+            : `<rect x="${x(position) - 14}" y="${y + 18}" width="28" height="7" fill="url(#${id}-ground)"/>`}
+        <text x="${x(position)}" y="${y + 37}" text-anchor="middle" font-size="11">${'AB'[i]}</text>`).join('');
+    const positions = [...new Set([0, a, b, L, ...points.map(p => p.x), ...udls.flatMap(w => [w.s, w.e])])]
+        .sort((left, right) => left - right);
+    const loadArrow = `stroke="#a7462e" stroke-width="1.9" marker-end="url(#${id}-load)"`;
+    const reactionArrow = `stroke="#155d68" stroke-width="2" fill="none" marker-end="url(#${id}-reaction)"`;
+    const drafts = [
+        [`M${x(a) - 35} 82H${x(a) - 4}`, x(a) - 35, 75, 'Aₓ'],
+        [`M${x(a)} 62V25`, x(a) - 7, 17, 'Aᵧ'],
+        [`M${x(b)} 62V25`, x(b) - 7, 17, 'Bᵧ'],
+        [`M${x(a) + 17} 100A16 16 0 1 0 ${x(a) + 20} 69`, x(a) + 32, 65, 'Mₐ'],
+        [`M${x(b) - 35} 82H${x(b) - 4}`, x(b) - 30, 75, 'Bₓ'],
+    ];
+    return `<svg class="diagram beam-figure" viewBox="0 0 520 159" role="img"
+        aria-label="${label}${reactions.length ? '. Reactions drawn: ' + reactions.map(i => drafts[i][3]).join(', ') : ''}">
+        <defs>
+            <marker id="${id}-load" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <path d="M0 0L6 3L0 6Z" fill="#a7462e"/>
+            </marker>
+            <marker id="${id}-reaction" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <path d="M0 0L6 3L0 6Z" fill="#155d68"/>
+            </marker>
+            <pattern id="${id}-ground" width="5" height="5" patternUnits="userSpaceOnUse">
+                <path d="M0 5L5 0" stroke="#26343b" stroke-width=".8"/>
+            </pattern>
+        </defs>
+        <path d="M${x(0)} ${y}H${x(L)}" stroke="#23343a" stroke-width="4"/>
+        ${supports}
+        ${points.map(({ x: position, p }) => `
+            <path d="M${x(position)} 20V${y - 4}" ${loadArrow}/>
+            <text x="${x(position)}" y="15" text-anchor="middle" fill="#a33a25" font-size="12">${p} kN</text>`).join('')}
+        ${udls.map(({ s, e, w }) => `
+            <path d="M${x(s)} 41H${x(e)}" stroke="#a7462e" stroke-width="1.8"/>
+            ${Array.from({ length: 9 }, (_, i) => `<path d="M${x(s + (e - s) * i / 8)} 41V${y - 4}" ${loadArrow}/>`).join('')}
+            <text x="${x((s + e) / 2)}" y="35" text-anchor="middle" fill="#a33a25" font-size="12">${w} kN/m</text>`).join('')}
+        ${reactions.map(i => {
+            const [path, tx, ty, name] = drafts[i];
+            return `<path d="${path}" ${reactionArrow}/><text x="${tx}" y="${ty}" fill="#155d68" font-size="12">${name}</text>`;
+        }).join('')}
+        <path d="M${x(0)} 138H${x(L)}" stroke="#65766b"/>
+        ${positions.map(position => `<path d="M${x(position)} 130V144m-4-2 8-8" stroke="#65766b"/>
+            <text x="${x(position)}" y="155" text-anchor="middle" font-size="11">${position} m</text>`).join('')}
+    </svg>`;
+}
+
+function trussFig(){return `<svg class="diagram" viewBox="0 0 420 240" role="img" aria-label="Triangular truss with pin A, roller B and a 40 kilonewton load downward at apex C. Diagonals are inclined at 45 degrees."><defs><marker id="ta" orient="auto" markerWidth="7" markerHeight="7" refX="6" refY="3"><path d="M0 0L6 3L0 6" fill="#bd5237"/></marker></defs><path d="M60 182L210 32L360 182Z" fill="none" stroke="#26343b" stroke-width="4"/><path d="M210 2V26" stroke="#bd5237" stroke-width="2" marker-end="url(#ta)"/><text x="220" y="13" font-size="12" fill="#a33a25">40 kN</text><path d="M60 184l-12 15h24ZM360 184l-12 15h24Z" fill="white" stroke="#26343b"/><circle cx="354" cy="203" r="3" fill="none" stroke="#26343b"/><circle cx="366" cy="203" r="3" fill="none" stroke="#26343b"/>${[[60,182,'A'],[210,32,'C'],[360,182,'B']].map(([x,y,t])=>`<circle cx="${x}" cy="${y}" r="4" fill="#fff" stroke="#26343b"/><text x="${x-12}" y="${y-9}" font-size="12">${t}</text>`).join('')}<text x="85" y="175" font-size="12">45°</text><text x="315" y="175" font-size="12">45°</text><path d="M60 221H360M60 216V227M360 216V227" stroke="#65766b"/><text x="210" y="236" text-anchor="middle" font-size="12">8 m</text></svg>`}
+
+const lateralNodes={A:[0,0],B:[5,0],C:[0,5],D:[5,5],E:[0,10]},lateralMembers=['AC','AB','BC','BD','CE','CD','ED'];
+function lateralFig(){let px=x=>96+x*29,py=y=>338-y*29;return `<svg class="diagram" viewBox="0 0 340 395" role="img" aria-label="Five joint truss, two 5 metre bays vertically and 5 metre width, 90 kN to the right at E"><defs><marker id="latArrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="#b84d34"/></marker></defs>${lateralMembers.map(m=>{let a=lateralNodes[m[0]],b=lateralNodes[m[1]];return `<path d="M${px(a[0])} ${py(a[1])}L${px(b[0])} ${py(b[1])}" stroke="#26343b" stroke-width="3"/>`}).join('')}${Object.entries(lateralNodes).map(([name,[x,y]])=>`<circle cx="${px(x)}" cy="${py(y)}" r="4" fill="white" stroke="#26343b"/><text x="${px(x)+(x===0?-16:10)}" y="${py(y)-8}" font-size="13" font-weight="bold">${name}</text>`).join('')}<path d="M20 48H89" stroke="#b84d34" stroke-width="2.6" marker-end="url(#latArrow)"/><text x="18" y="37" fill="#a43b27" font-size="13">90 kN</text><path d="M96 340l-12 17h24ZM241 340l-12 17h24Z" fill="#f9f4e5" stroke="#26343b"/><circle cx="235" cy="361" r="3" fill="white" stroke="#26343b"/><circle cx="247" cy="361" r="3" fill="white" stroke="#26343b"/><path d="M96 375H241M96 369V381M241 369V381M281 48V338M275 48H287M275 193H287M275 338H287" stroke="#65766b"/><g font-size="11" fill="#26343b"><text x="168" y="391" text-anchor="middle">5 m</text><text x="289" y="125">5 m</text><text x="289" y="270">5 m</text><text x="159" y="210">45°</text></g></svg>`}
+
+function plate(label, drawing, height = 180) {
+    return `<svg class="diagram plate" viewBox="0 0 460 ${height}" role="img" aria-label="${label}">
+        <defs><marker id="plate-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0 0L6 3L0 6Z" fill="#a7462e"/>
+        </marker></defs>${drawing}</svg>`;
+}
+
+const plates = {
+    triangle: () => plate('Right triangle with adjacent leg 4, opposite leg 3, and hypotenuse 5.', `
+        <path class="diagram-fill" d="M140 145H320V10Z"/>
+        <path class="diagram-line" d="M304 145V129H320M177 145A37 37 0 0 0 169.6 122.8"/>
+        <text x="183" y="135">θ</text><text x="181" y="161">adjacent · 4 m</text>
+        <text x="328" y="87">opposite · 3 m</text><text x="145" y="70">hypotenuse · 5 m</text>`),
+    load: () => plate('Roof pressure passes to roof beams, columns, and foundations.', `
+        <path class="diagram-fill" d="M60 59L181 38H397L275 59Z"/>
+        <path class="diagram-line" d="M60 59H275L397 38M80 68H275M93 70V138M263 70V138M85 141H104M254 141H273M71 150H286"/>
+        <path class="diagram-arrow" d="M124 13V49M176 12V41M227 12V42M278 12V42M329 12V41"/>
+        <text x="345" y="22">pressure</text><text x="300" y="71">roof / beams</text>
+        <text x="291" y="116">columns</text><text x="288" y="154">foundations</text>`),
+    vector: () => plate('A force points up and right. Its horizontal projection is F x and its vertical projection is F y.', `
+        <path class="diagram-line" d="M80 138V22M80 138H348M123 138A43 43 0 0 0 119 120"/>
+        <path class="diagram-dash" d="M303 37V138M303 37H80"/>
+        <path class="diagram-arrow" d="M80 138L303 37"/>
+        <text x="309" y="39">F</text><text x="132" y="130">θ</text>
+        <text x="177" y="161">Fₓ = F cos θ</text><text x="6" y="85">Fᵧ</text>`),
+    supports: () => plate('A pin resists two translations, a roller reacts normal to its surface, and a fixed support also resists rotation.', `
+        <path class="diagram-line" d="M34 71H120M75 71L58 99H92ZM51 104H99M175 71H263M220 71L204 97H236ZM199 110H241M329 55V106M329 71H420M317 62L329 55M317 72L329 65M317 82L329 75M317 92L329 85M317 102L329 95"/>
+        <circle class="diagram-fill" cx="211" cy="103" r="5"/><circle class="diagram-fill" cx="229" cy="103" r="5"/>
+        <path class="diagram-arrow" d="M75 71V31M75 71H111M220 71V31M329 71V31M329 71H374M388 114A18 18 0 1 0 359 116"/>
+        <text x="62" y="143">Pin</text><text x="200" y="143">Roller</text><text x="349" y="143">Fixed</text>`),
+    section: () => plate('A T section with a 100 millimetre flange, 80 millimetre web below the flange, and centroid 67.778 millimetres from bottom.', `
+        <path class="diagram-fill" d="M140 24H280V52H224V164H196V52H140Z"/>
+        <path class="diagram-dash" d="M112 69.11H318M111 164H319"/>
+        <path class="diagram-line" d="M311 69.11V164M305 69.11H317M305 164H317"/>
+        <text x="175" y="17">100 mm</text><text x="325" y="78">x–x</text>
+        <text x="325" y="113">67.778 mm</text><text x="117" y="177">datum</text>`),
+    column: () => plate('A pin-ended column shown straight and with its first buckled shape.', `
+        <path class="diagram-line" d="M111 37V151M95 36H127M95 152H127M309 37Q394 95 309 151M295 36H323M295 152H323"/>
+        <path class="diagram-dash" d="M309 41V149"/>
+        <path class="diagram-arrow" d="M111 8V32M309 8V32"/>
+        <text x="39" y="97">Unbraced L</text><text x="355" y="103">Buckled</text><text x="121" y="24">P</text>`),
+};
+
+const stressPoints = [[65, 130.45], [95, 65], [225, 34], [305, 85]];
+function stressFigure(selectable = false) {
+    return `<svg class="diagram plate" viewBox="0 0 360 220" role="img" aria-label="Engineering stress versus strain. A is on the initial straight rise, B at the first bend, C at the peak, and D at the end after the drop.">
+        <path class="diagram-line" d="M40 19V185H333"/>
+        <text x="44" y="22">σ · Stress</text><text x="263" y="206">ε · Strain</text>
+        <path d="M40 185L95 65L117 68C156 64 171 34 225 34C252 34 284 54 305 85" class="diagram-line"/>
+        ${stressPoints.map(([x, y], i) => `<g class="curve-point" ${selectable ? `data-point="${i}"` : ''}>
+            <circle cx="${x}" cy="${y}" r="11"/><text x="${x}" y="${y + 4}" text-anchor="middle">${'ABCD'[i]}</text>
+        </g>`).join('')}
+    </svg>`;
+}
+
+function figureFor({ b, fig }) {
+    if (b) return beamFigure(b);
+    if (fig === 'truss') return trussFig();
+    if (fig === 'lateral') return lateralFig();
+    if (fig === 'stress') return stressFigure();
+    return plates[fig]?.() || '';
+}
