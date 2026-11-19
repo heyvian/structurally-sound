@@ -136,7 +136,7 @@ h1:focus, h2:focus { outline: none; }
 
 .hero {
     display: grid;
-    grid-template-columns: minmax(0,1.08fr) minmax(0,1fr);
+    grid-template-columns: minmax(0,1.04fr) minmax(0,1.12fr);
     border: 1.5px solid var(--ink);
     box-shadow: 7px 7px 0 var(--red);
     background: var(--white);
@@ -197,18 +197,19 @@ h1:focus, h2:focus { outline: none; }
     min-height: clamp(285px,39vw,466px);
     padding: 22px 21px 40px;
     overflow: hidden;
-    background: #e7e6dd url("visuals/axonometrics.svg") center / cover no-repeat;
+    background: #151c28 url("visuals/montage.svg") center / cover no-repeat;
 }
 
 .hero-scene::before {
     content: "";
     position: absolute;
     z-index: -1;
-    width: 54%;
-    height: 75%;
-    background: linear-gradient(125deg,#f7f5e5ee,#f7f5e58c);
-    border: 1px solid #37362f6e;
-    transform: skewY(-9deg);
+    width: 61%;
+    height: 84%;
+    background: linear-gradient(115deg,#e4eef8c4,#6888bd6b);
+    border: 1px solid #dce9ff8a;
+    clip-path: polygon(8% 5%, 100% 0, 90% 85%, 0 100%);
+    transform: skewY(-12deg);
 }
 
 .hero-val { width: min(77%, 332px); transform-origin: 50% 87%; }
@@ -374,7 +375,27 @@ h1:focus, h2:focus { outline: none; }
 }
 
 .study-val { width: clamp(57px,9vw,88px); }
-.study-heading h1 { margin: 7px 0; line-height: 1; }
+.study-heading {
+    position: relative;
+    isolation: isolate;
+    min-height: 86px;
+    padding: 6px 4px 6px 13px;
+    border-left: 4px solid var(--red);
+    border-bottom: 1px solid #a1adbd;
+    background: #eef0f4;
+}
+.study-heading::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: url("visuals/axonometrics.svg") 100% 30% / 245px auto no-repeat;
+    clip-path: polygon(100% 0,100% 100%,79% 100%,91% 0);
+    opacity: .45;
+    content: "";
+}
+.study-question .study-heading { border-left-color: var(--blue); }
+.study-heading h1 { margin: 7px 0; line-height: 1.02; font-size: clamp(33px,4.6vw,52px); }
+.question-setup { padding-left: 12px; border-left: 2px solid var(--line); }
 
 .modes, .studio-grid {
     display: grid;
@@ -432,6 +453,63 @@ progress::-webkit-progress-value { background: var(--red); }
 progress::-moz-progress-bar { background: var(--red); }
 
 .explanation { line-height: 1.65; }
+.study-instruction .explanation > p:first-child {
+    padding-left: 12px;
+    border-left: 2px solid var(--blue);
+}
+.method-panel {
+    margin: 11px 0 14px;
+    padding: 0;
+    border: 1px solid #222b3a;
+    background: #edf1f8;
+}
+.method-panel > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 45px;
+    padding: 7px 10px;
+    list-style: none;
+    color: #f6f2e7;
+    background: #182438;
+}
+.method-panel > summary::-webkit-details-marker { display: none; }
+.method-panel > summary::after { margin-left: auto; content: "+"; font: 700 18px var(--mono); }
+.method-panel[open] > summary::after { content: "−"; }
+.method-label {
+    flex: 0 0 auto;
+    padding: 4px 9px 4px 6px;
+    color: #fffdfa;
+    background: var(--red);
+    clip-path: polygon(0 0,100% 0,90% 100%,0 100%);
+    font: 700 10px var(--mono);
+    text-transform: uppercase;
+}
+.method-body { padding: 11px; }
+.method-formula {
+    margin: 0 0 9px;
+    padding: 5px 9px;
+    border-left: 3px solid var(--red);
+    background: #f9f8ef;
+    font: 700 13px/1.5 var(--mono);
+    overflow-wrap: anywhere;
+}
+.method-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 11px; }
+.method-grid ol { margin: 0; padding-left: 24px; }
+.method-grid li { margin: 0 0 6px; padding-left: 3px; }
+.method-grid li::marker { color: var(--blue); font: 800 17px var(--display); }
+.method-example {
+    align-self: start;
+    padding: 8px 10px;
+    border-left: 3px solid var(--blue);
+    background: repeating-linear-gradient(135deg, #e0e8f6, #e0e8f6 7px, #ebf0f9 8px, #ebf0f9 12px);
+}
+.method-example b, .method-check b { color: #17377b; font: 700 11px var(--mono); text-transform: uppercase; }
+.method-example p { margin: 4px 0 1px; }
+.method-check { margin: 7px 0 0; padding-top: 6px; border-top: 1px solid #a1adbd; }
+.method-body, .method-panel > summary strong { font-size: 14px; }
+.study-methods { background: #efeee6; }
+
 .worked, .formula {
     border: 1px solid var(--ink);
     border-left: 5px solid var(--blue);
@@ -546,6 +624,22 @@ legend { padding: 0 6px; font: 700 13px var(--mono); }
 .restraint-legend span:nth-child(2)::before { border-top: 2px solid var(--red); }
 .restraint-legend span:last-child::before { border-top: 2px solid var(--blue); }
 
+.restraint-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.restraint-pair figure {
+    display: grid;
+    grid-template-columns: minmax(28px, min(34%, 72px)) minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 4px 6px;
+    border: 1px solid var(--line);
+    background: #f0eee3;
+}
+.restraint-pair figure:last-child { background: var(--ice); border-color: #a1adbd; }
+.restraint-pair figcaption > * { display: block; }
+.restraint-pair figcaption strong { font: 800 clamp(16px, 3vw, 23px)/1.1 var(--display); margin: 2px 0 4px; }
+.restraint-pair figcaption span, .restraint-pair figcaption small { font: 11px/1.4 var(--mono); }
+
 .feedback {
     display: grid;
     grid-template-columns: auto minmax(0,1fr);
@@ -594,6 +688,7 @@ tbody tr:nth-child(even) { background: #f0eee3; }
     .layout { grid-template-columns: 1fr; gap: 17px; }
     .studio-grid, .modes { grid-template-columns: 1fr; }
     .mode { min-height: 0; }
+    .method-grid { grid-template-columns: 1fr; gap: 5px; }
 }
 
 @media (max-width: 480px) {
@@ -622,4 +717,7 @@ tbody tr:nth-child(even) { background: #f0eee3; }
     main { width: auto; padding: 0; }
     .lesson { max-width: none; box-shadow: none; border: 0; margin: 0; padding: 0; }
     .sheet-topic { break-inside: avoid; }
+    .study-methods:not([open]), .study-methods .method-panel:not([open]) { display: none; }
+    .method-panel > summary, .method-label { color: var(--ink); background: white; }
+    .method-panel > summary::after { display: none; }
 }

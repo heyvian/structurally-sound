@@ -30,7 +30,7 @@ const lessonPlans = [
         guided: [
             N('An edge beam carries one side of a 3 m bay. The floor pressure is 4 kPa. Find the beam’s line load.', 6,
                 'The tributary width is half the bay, 1.5 m. The line load is 4 × 1.5 = 6 kN/m.', 'Sketch the midline between the two beams.', 'kN/m'),
-            N('That 6 kN/m acts along a 5 m edge beam. Find the total load transferred to its supports.', 30,
+            N('A uniform 6 kN/m load acts along a 5 m edge beam. Find the total load transferred to its supports.', 30,
                 '6 kN/m × 5 m = 30 kN.', 'Multiply line intensity by loaded length.', 'kN'),
         ],
         quick: ['Draw the load path to ground.', 'Identify point force, line load, or area pressure before converting.', 'For one-way gravity loading, mark half-bays and multiply pressure × width × length as needed.'],
@@ -62,7 +62,7 @@ const lessonPlans = [
         guided: [
             N('A 20 kN force points 30° above −x. Enter its signed horizontal component.', -20 * Math.cos(Math.PI / 6),
                 'The horizontal magnitude is 20 cos 30° = 17.32 kN. The arrow points left, so Fₓ = −17.32 kN.', 'Mark leftward as negative.', 'kN'),
-            N('The same force has Fₓ ≈ −17.32 kN. Add an 8 kN rightward force. What is the signed resultant Rₓ?', 8 - 20 * Math.cos(Math.PI / 6),
+            N('A leftward force component is Fₓ ≈ −17.32 kN. Add an 8 kN rightward force. What is the signed resultant Rₓ?', 8 - 20 * Math.cos(Math.PI / 6),
                 'Rₓ = −17.32 + 8 = −9.32 kN. The resultant still points left and upward.', 'Add signed components along the same axis.', 'kN'),
         ],
         quick: ['Sketch axes and the actual angle reference.', 'Resolve each arrow, then add each axis separately.', 'Use √(Rₓ² + Rᵧ²) and confirm the direction’s quadrant.'],
@@ -255,18 +255,36 @@ const lessonPlans = [
         ],
         example: {
             setup: 'A pin-ended steel column has E = 200,000 MPa, Imin = 800,000 mm⁴, and L = 4,000 mm.',
-            steps: ['Use N and mm throughout. Here K = 1 and KL = 4,000 mm.', 'Pcr = π² × 200,000 × 800,000 / 4,000² ≈ 98,696 N = 98.70 kN.', 'If the effective length halves, the ideal load becomes four times as large, about 394.8 kN.', 'Check other axes and material limits before drawing a real design conclusion.'],
+            steps: [
+                'Find the starting load. For pin–pin, K = 1 and KL = 4,000 mm. Euler’s formula gives Pcr = π² × 200,000 × 800,000 ÷ 4,000² ≈ 98,696 N, or 98.70 kN.',
+                'Now make both ends fixed. The same column has the same E, I and physical length L. Only K changes, from 1 to 0.5.',
+                'Write Euler’s load as (π²EI/L²) ÷ K². The term in parentheses is the same before and after. Dividing the new load by the old load leaves (Kold ÷ Knew)².',
+                'The load multiplier is (1 ÷ 0.5)² = 4. Multiply the starting load by 4 to get about 394.8 kN.',
+                'Check the direction. A smaller K makes KL shorter, so the buckling load goes up. A larger K makes KL longer, so the load goes down.',
+            ],
+            restraints: ['pin-pin', 'fixed-fixed'],
         },
         guided: [
-            N('The same E and I give Pcr = 98.70 kN for pin–pin restraint. What is the fixed–free Euler load for the same physical length?',
-                Math.PI ** 2 * 200000 * 800000 / 8000 ** 2 / 1000,
-                'K doubles from 1 to 2. Pcr falls to a quarter of its original value, 24.67 kN.', 'The effective length is squared in the denominator.', 'kN'),
+            {
+                type: 'formula',
+                prompt: 'Change the column to fixed–free',
+                setup: 'The column buckles at 98.70 kN with pin–pin supports. Find its new Euler load when the supports change to fixed–free. E, I and the physical length L stay the same.',
+                restraints: ['pin-pin', 'fixed-free'],
+                symbol: 'Pnew', expression: 'Pold × (Kold ÷ Knew)²', unit: 'kN',
+                inputs: [['Pold', 'Given pin–pin Euler load', 'kN', 98.70],
+                    ['Kold', 'Pin–pin length factor', '', bucklingCases['pin-pin'].k],
+                    ['Knew', 'Fixed–free length factor', '', bucklingCases['fixed-free'].k]],
+                calculate: (load, oldK, newK) => load * (oldK / newK) ** 2,
+                substitute: (load, oldK, newK) => `(${load} kN) × (${oldK} ÷ ${newK})²`,
+                hint: 'Start with 98.70 kN. Read Kold from the pin–pin drawing and Knew from the fixed–free drawing. A longer effective length should give a lower load.',
+                explain: 'The effective length doubles. The load multiplier is (1 ÷ 2)² = ¼, so the new load is about 24.7 kN.',
+            },
             N('A 2,000 mm cantilever carries 3,000 N at its tip. E = 200,000 MPa and I = 6×10⁶ mm⁴. Find tip deflection.',
                 3000 * 2000 ** 3 / (3 * 200000 * 6e6), 'PL³/(3EI) = 6.67 mm.', 'Keep the length cubed in mm³.', 'mm'),
         ],
         quick: ['Identify the likely failure or serviceability mode.', 'Compare π²EI/(KL)² about each unbraced axis.', 'Choose deflection expressions from the correct support and load case.'],
         pitfalls: ['Do not substitute physical length for effective length when K differs from 1.', 'A deflection calculated in metres needs ×1,000 to be reported in mm.'],
-        sheet: 'Pcr = π²EI/(KL)². r = √(I/A). Central simple-beam point load δ = PL³/(48EI). Cantilever tip load δ = PL³/(3EI).',
+        sheet: 'Pcr = π²EI/(KL)². If only K changes, Pnew = Pold × (Kold/Knew)². r = √(I/A). Central simple-beam point load δ = PL³/(48EI). Cantilever tip load δ = PL³/(3EI).',
     },
     {
         goal: 'Solve individual truss member forces using joints and interpret tension, compression, and zero force.',
@@ -378,6 +396,10 @@ units[5].q.push(
         ['Ultimate tensile strength', 'Maximum engineering stress'],
     ], 'E is a slope in the elastic region. Yield begins significant plastic deformation. Ultimate strength is a stress value.'),
 );
+
+units[7].q.push(N('A fixed–free column has an ideal Euler load of 30 kN. Change its supports to pin–pin while keeping E, I and physical length the same. Find the new ideal Euler load.',
+    120, 'The new load is 30 × (2 ÷ 1)² = 120 kN. Halving the effective length quadruples the load.',
+    'Use the old K over the new K, then square the ratio.', 'kN'));
 
 units[10].q.push(N('Solve 4x + 3 = 19. Find x.', 4,
     'Subtract 3 from both sides to get 4x = 16, then divide both sides by 4.', 'Undo addition before multiplication.'));

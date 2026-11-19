@@ -63,6 +63,22 @@ function restraintDiagram(restraint) {
     </svg>`;
 }
 
+function restraintPair(keys) {
+    return `<div class="restraint-pair" role="group" aria-label="End restraints before and after the change">
+        ${keys.map((key, i) => {
+            const restraint = bucklingCases[key];
+            const length = restraint.k === 1 ? 'L' : `${fmt(restraint.k)}L`;
+            return `<figure>
+                ${restraintDiagram(restraint)}
+                <figcaption><small>${i === 0 ? 'Before' : 'After'}</small>
+                    <strong>${restraint.title}</strong>
+                    <span>K = ${fmt(restraint.k)} · KL = ${length}</span>
+                </figcaption>
+            </figure>`;
+        }).join('')}
+    </div>`;
+}
+
 function restraintComparison(key) {
     const { k, behavior, approximate } = bucklingCases[key];
     const factor = Number((1 / k ** 2).toFixed(2));
@@ -210,8 +226,9 @@ function stressFigure(selectable = false) {
     </svg>`;
 }
 
-function figureFor({ b, fig }) {
+function figureFor({ b, fig, restraints }) {
     if (b) return beamFigure(b);
+    if (restraints) return restraintPair(restraints);
     if (fig === 'truss') return trussFig();
     if (fig === 'lateral') return lateralFig();
     if (fig === 'stress') return stressFigure();

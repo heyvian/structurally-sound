@@ -98,6 +98,28 @@ function button(label, action, value = '', style = '') {
 const paragraphs = items => items.map(text => `<p>${text}</p>`).join('');
 const list = (items, tag = 'ul') => `<${tag}>${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`;
 
+function methodPanel(method, open = false) {
+    if (!method) return '';
+    return `<details class="method-panel" ${open ? 'open' : ''}>
+        <summary><span class="method-label">Method</span><strong>${method.title}</strong></summary>
+        <div class="method-body">
+            ${method.formula ? `<p class="method-formula">${method.formula}</p>` : ''}
+            <div class="method-grid">
+                ${list(method.steps, 'ol')}
+                <div class="method-example"><b>Worked example</b><p>${method.example}</p></div>
+            </div>
+            <p class="method-check"><b>Check your reasoning</b> ${method.check}</p>
+        </div>
+    </details>`;
+}
+
+function questionMethod(question) {
+    const id = questionMethods.get(question.key);
+    const guided = question.step === 'Do it together' || question.type === 'formula';
+    const firstUse = !session.queue.slice(0, session.cursor).some(earlier => questionMethods.get(earlier.key) === id);
+    return methodPanel(methods[id], guided || (firstUse && session.mode !== 'review'));
+}
+
 function focusPage() {
     window.scrollTo(0, 0);
     const title = app.querySelector('h1, h2');
@@ -195,8 +217,10 @@ function conceptCards(i) {
 
 function workedCard(i) {
     const plan = lessonPlans[i];
+    const { setup, steps, restraints } = plan.example;
     return teach('Worked example', 'Watch it',
-        `<p>${plan.example.setup}</p><div class="worked">${list(plan.example.steps, 'ol')}</div>`, plan, units[i].title);
+        `<p>${setup}</p>${restraints ? restraintPair(restraints) : ''}<div class="worked">${list(steps, 'ol')}</div>`,
+        restraints ? {} : plan, units[i].title);
 }
 
 function quickCard(i) {
@@ -348,8 +372,7 @@ function options(question, multiple = false) {
 function interaction(question) {
     switch (question.type) {
         case 'formula':
-            return `<p>${question.setup}</p>
-                <p class="formula">${question.symbol} = ${question.expression}</p>
+            return `<p class="formula">${question.symbol} = ${question.expression}</p>
                 <fieldset class="formula-fields"><legend>Enter the values from the problem</legend>
                     <div class="station-grid">${question.inputs.map(([symbol, label, unit], i) =>
                         `<label>${symbol} · ${label}${unit ? ` (${unit})` : ''}
@@ -408,7 +431,7 @@ function render() {
     const position = session.cursor + 1;
     answer = null;
     showGraphAnswer = null;
-    show(`<article class="lesson study">
+    show(`<article class="lesson study ${instruction ? 'study-instruction' : 'study-question'}">
         <div class="study-top">
             <nav class="study-nav" aria-label="Slide navigation">
                 ${button('× Exit', ['exam', 'final'].includes(session.mode) ? 'final' : 'home')}
@@ -422,7 +445,9 @@ function render() {
             <h1>${question.prompt}</h1>
             <div class="study-val val-entrance">${valPortrait('guide')}</div>
         </div>
+        ${question.setup ? `<p class="question-setup">${question.setup}</p>` : ''}
         ${question.type === 'fbd' ? '' : figureFor(question)}
+        ${!instruction && !exam ? questionMethod(question) : ''}
         ${instruction ? `<div class="explanation">${question.body}</div>` : interaction(question)}
         <div id="feedback" aria-live="polite"></div>
         <div class="toolbar">
@@ -568,6 +593,8 @@ function checkAnswer(skipped = false) {
     }
     recordProgress(question, correct);
     saveProgress();
+    const method = app.querySelector('.method-panel');
+    if (!correct && method) method.open = true;
 
     const count = session.results.size;
     let message = correct ? 'Val approves. A rare institutional success.' : valLines[(count - 1) % valLines.length];
@@ -595,11 +622,16 @@ function checkAnswer(skipped = false) {
 
 function studySheetContent(i) {
     const plan = lessonPlans[i];
+    const ids = new Set([calculationCards[i], ...guidedQuestions[i], ...unitQuestions[i]]
+        .map(question => questionMethods.get(question.key)));
     return `<section class="sheet-topic"><h2>${units[i].title}</h2>
         <p class="formula">${plan.sheet}</p>
         ${figureFor({ b: plan.beam, fig: plan.figure })}
         <h3>Calculation sequence</h3>${list(plan.quick, 'ol')}
         <h3>Check before you submit</h3>${list(plan.pitfalls)}
+        <details class="study-methods"><summary>Worked methods for this topic</summary>
+            ${[...ids].map(id => methodPanel(methods[id])).join('')}
+        </details>
     </section>`;
 }
 
@@ -631,6 +663,7 @@ function finish() {
                 <summary>${correct ? '✓' : skipped ? 'Skipped' : '↻'} · ${question.prompt}</summary>
                 ${question.type === 'fbd' ? beamFigure(question.b || center, question.answer) : figureFor(question)}
                 <p>${question.explain}</p>${question.type === 'graph' ? graphSolution(question) : ''}
+                ${methodPanel(methods[questionMethods.get(question.key)])}
                 </details>`).join('')}</section>` : ''}
         ${mode === 'review' ? `<h2>What to put on your sheet</h2>${studySheetContent(unit)}` : ''}
         <div class="toolbar">${button('Learning path', 'home')}${button('Revisit mistakes', 'weak')}
