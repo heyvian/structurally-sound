@@ -1,4 +1,94 @@
-const val = '<img class="val-art" src="src/val.svg" alt="Val, a glass tower with expressive eyes">';
+function valPortrait(pose, label = '') {
+    return `<img class="val-art" src="src/visuals/val-${pose}.webp" width="440" height="540" alt="${label}" decoding="async">`;
+}
+
+const fixedPinRoot = 4.4934094579;
+const bucklingCases = {
+    'pin-pin': {
+        title: 'Pin–pin', k: 1, base: 'pin', top: 'pin',
+        shape: t => Math.sin(Math.PI * t),
+        behavior: 'Both ends stay in place and can rotate. The column bows between the two pins.',
+    },
+    'fixed-fixed': {
+        title: 'Fixed–fixed', k: .5, base: 'fixed', top: 'fixed', inflections: [.25, .75],
+        shape: t => 1 - Math.cos(2 * Math.PI * t),
+        behavior: 'Both ends resist rotation. The curve changes concavity at the quarter points, leaving half a span between those points.',
+    },
+    'fixed-pin': {
+        title: 'Fixed–pin', k: Math.PI / fixedPinRoot, base: 'fixed', top: 'pin', approximate: true,
+        inflections: [1 - Math.PI / fixedPinRoot],
+        shape: t => Math.sin(fixedPinRoot * t) + fixedPinRoot * (1 - t - Math.cos(fixedPinRoot * t)),
+        behavior: 'The base holds its angle. The effective length runs from the point where the curve changes concavity to the pin above it.',
+    },
+    'fixed-free': {
+        title: 'Fixed–free', k: 2, base: 'fixed', top: 'free',
+        shape: t => 1 - Math.cos(Math.PI * t / 2),
+        behavior: 'The base holds its angle. The free tip can translate and rotate, so the column acts like half of an equivalent pin-ended column.',
+    },
+};
+
+function restraintDiagram(restraint) {
+    const center = 59;
+    const height = 128;
+    const base = 157;
+    const samples = Array.from({ length: 33 }, (_, i) => restraint.shape(i / 32));
+    const amplitude = Math.max(...samples);
+    const x = value => fmt(center + 41 * value / amplitude);
+    const y = t => fmt(base - height * t);
+    const points = samples.map((value, i) =>
+        `${x(value)},${y(i / 32)}`).join(' ');
+    const inflections = restraint.inflections || [];
+    const lower = inflections[0];
+    const equivalentSpan = inflections.length ?
+        `<path class="restraint-effective" d="M104 ${y(lower)}h8m-4 0V${y(lower + restraint.k)}m-4 0h8"/>
+            <text class="restraint-kl" x="115" y="${y(lower + restraint.k / 2)}">KL</text>` : '';
+    const end = restraint.top === 'free' ? center + 41 : center;
+    const support = (kind, y, flip = 1) => {
+        if (kind === 'free') return `<circle cx="${end}" cy="${y}" r="3" class="restraint-tip"/>`;
+        return `<g class="restraint-support" transform="translate(${center} ${y}) scale(1 ${flip})">
+            ${kind === 'pin' ? '<path d="M0 0l-9 11H9zM-14 12H14"/>' : '<path d="M-14 0H14M-12 0l-4 6m10-6l-4 6m10-6l-4 6m10-6l-4 6m10-6l-4 6"/>'}
+        </g>`;
+    };
+    return `<svg viewBox="0 0 132 180" class="restraint-figure" aria-hidden="true">
+        <path class="restraint-length" d="M28 29V157m-4-124 8-8m-8 136 8-8M24 29H43M24 157H43"/>
+        <text x="16" y="97">L</text>
+        <path class="restraint-axis" d="M${center} 29V157"/>
+        <polyline class="restraint-bow" points="${points}"/>
+        ${inflections.map(t => `<circle class="restraint-point" cx="${x(restraint.shape(t))}" cy="${y(t)}" r="2.8"/>`).join('')}
+        ${equivalentSpan}
+        ${support(restraint.base, base)}
+        ${support(restraint.top, base - height, -1)}
+        ${restraint.top === 'free'
+            ? `<path class="restraint-support" d="M${end} 7V22m-3-4 3 4 3-4"/><text x="${end + 7}" y="14">P</text>` : ''}
+    </svg>`;
+}
+
+function restraintComparison(key) {
+    const { k, behavior, approximate } = bucklingCases[key];
+    const factor = Number((1 / k ** 2).toFixed(2));
+    const mark = approximate ? '≈' : '=';
+    return `<p>${behavior}</p><div class="restraint-results">
+        <span>Effective length <strong>KL ${mark} ${approximate ? '0.70' : fmt(k)}L</strong></span>
+        <span>Critical load <strong>${approximate ? '≈ ' : ''}${factor}× pin–pin</strong></span>
+    </div>`;
+}
+
+function bucklingComparison() {
+    return `<section class="buckling-comparison" aria-labelledby="restraint-title">
+        <h2 id="restraint-title">Compare end restraints</h2>
+        <p>Same physical length L, material and section. Select a column to compare its effective length and buckling load.</p>
+        <div class="restraint-grid" role="group" aria-label="Column end restraints">
+            ${Object.entries(bucklingCases).map(([key, restraint]) => `<button type="button" class="restraint-card"
+                data-action="restraint" data-value="${key}" aria-pressed="${key === 'pin-pin'}">
+                ${restraintDiagram(restraint)}
+                <b>${restraint.title}</b>
+                <span>K ${restraint.approximate ? '≈ 0.70' : '= ' + fmt(restraint.k)}</span>
+            </button>`).join('')}
+        </div>
+        <div class="restraint-detail" aria-live="polite">${restraintComparison('pin-pin')}</div>
+        <small class="restraint-legend"><span>Original axis</span><span>Buckled shape, exaggerated</span><span>Effective span</span></small>
+    </section>`;
+}
 
 let beamFigureNumber = 0;
 function beamFigure(beam, reactions = []) {
@@ -125,5 +215,6 @@ function figureFor({ b, fig }) {
     if (fig === 'truss') return trussFig();
     if (fig === 'lateral') return lateralFig();
     if (fig === 'stress') return stressFigure();
+    if (fig === 'column-restraints') return bucklingComparison();
     return plates[fig]?.() || '';
 }

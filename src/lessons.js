@@ -236,6 +236,7 @@ const lessonPlans = [
     {
         goal: 'Estimate elastic buckling and bending deflection and explain what changes their magnitude.',
         figure: 'column',
+        quickFigure: 'column-restraints',
         calculation: {
             prompt: 'Calculate an Euler buckling load',
             setup: 'A 3,000 mm pin-ended steel column has E = 200,000 MPa and I = 420,000 mm⁴ about its weak axis. Use the pin–pin effective length factor.',
@@ -249,7 +250,7 @@ const lessonPlans = [
         },
         concepts: [
             ['Distinguish strength, stability, and stiffness', 'A short compression member can reach material limits before buckling. A slender member can deflect sideways under load below yield. A beam can also deflect too much while remaining strong and stable. Treat these as separate checks.'],
-            ['Determine the effective length and governing axis', 'Euler’s ideal elastic critical load is Pcr = π²EI/(KL)². L is the unbraced length and K represents end restraint. Ideal values include 1 for pin–pin, 2 for fixed–free, 0.5 for fixed–fixed, and about 0.7 for fixed–pin. Check both axes with their own I and effective lengths. Slenderness is KL/r, with r = √(I/A).'],
+            ['Determine the effective length and governing axis', 'Euler’s ideal elastic critical load is Pcr = π²EI/(KL)². L is the unbraced length and K represents end restraint. Ideal values include 1 for pin–pin, 2 for fixed–free, 0.5 for fixed–fixed, and about 0.7 for fixed–pin. Check both axes with their own I and effective lengths. Slenderness is KL/r, with r = √(I/A).', 'column-restraints'],
             ['Estimate elastic beam deflection', 'Flexural rigidity is EI. For an ideal pin–roller beam, a central point force gives δmax = PL³/(48EI) and a full UDL gives 5wL⁴/(384EI). A cantilever tip force gives PL³/(3EI). Use only the formula for the matching load and restraints. Euler’s ideal result assumes a straight, elastic member with ideal restraint. Real columns require an appropriate design method.'],
         ],
         example: {

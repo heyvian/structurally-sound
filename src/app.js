@@ -98,14 +98,18 @@ function button(label, action, value = '', style = '') {
 const paragraphs = items => items.map(text => `<p>${text}</p>`).join('');
 const list = (items, tag = 'ul') => `<${tag}>${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`;
 
-function show(html) {
-    app.innerHTML = html;
+function focusPage() {
     window.scrollTo(0, 0);
     const title = app.querySelector('h1, h2');
     if (title) {
         title.tabIndex = -1;
         title.focus({ preventScroll: true });
     }
+}
+
+function show(html) {
+    app.innerHTML = html;
+    focusPage();
 }
 
 function learningProgress() {
@@ -131,25 +135,32 @@ function learningProgress() {
 }
 
 function home() {
+    session = undefined;
     saveProgress();
     show(`<div class="hero">
-        <div class="val">${val}</div>
-        <div>
+        <div class="hero-copy">
             <div class="eyebrow">ARCH 600 · Unofficial study app</div>
-            <h1>Good things<br>stand up.</h1>
+            <h1><span>Good things</span><em>stand up.</em></h1>
             <p>Learn structures with Val, from your first force diagram to a full beam and truss analysis.</p>
+            <a class="primary hero-link" href="#path-title">Explore the learning path <span aria-hidden="true">↓</span></a>
         </div>
+        <figure class="hero-scene">
+            <div class="hero-val val-entrance">${valPortrait('hello', 'Val, a little glass tower with wide eyes')}</div>
+            <figcaption>Val <span>Axonometric</span></figcaption>
+        </figure>
     </div>
     <div class="layout">
         <section aria-labelledby="path-title">
             <h2 id="path-title">Learning path</h2>
+            <div class="course-index">
             ${unitOrder.map(i => {
                 const completed = Object.keys(learningModes).filter(mode => state.done[`${i}:${mode}`]).length;
                 return `<button type="button" class="unit" data-action="unit" data-value="${i}">
-                    <span class="num">${unitNumber(i)}</span><span class="details">${units[i].title}
-                    <small>${completed}/3 modes complete</small></span><span aria-hidden="true">›</span></button>`;
+                    <span class="num" aria-hidden="true">${unitNumber(i)}</span><span class="details">${units[i].title}
+                    <small>${completed}/3 modes complete</small></span><span class="unit-arrow" aria-hidden="true">↗</span></button>`;
             }).join('')}
-            ${button('<span class="num">★</span><span class="details">Final exam studio<small>Review, workshops and practice exams</small></span><span aria-hidden="true">›</span>', 'final', '', 'unit')}
+            ${button('<span class="num" aria-hidden="true">★</span><span class="details">Final exam studio<small>Review, workshops and practice exams</small></span><span class="unit-arrow" aria-hidden="true">↗</span>', 'final', '', 'unit capstone')}
+            </div>
         </section>
         ${learningProgress()}
     </div>`);
@@ -158,10 +169,12 @@ function home() {
 function section(i) {
     const unit = units[i];
     show(`${button('‹ Learning path', 'home')}
-        <article class="lesson">
+        <article class="lesson unit-sheet">
             <div class="sectionmark"><span>Sheet ${unitNumber(i)}</span><span>${unit.date}</span></div>
-            <h1>${unit.title}</h1>
-            <p>${lessonPlans[i].goal}</p>
+            <div class="topic-heading">
+                <div><h1>${unit.title}</h1><p>${lessonPlans[i].goal}</p></div>
+                <div class="topic-val val-entrance">${valPortrait('guide')}</div>
+            </div>
             <div class="modes">${Object.entries(learningModes).map(([mode, [title, duration, description]]) =>
                 button(`<b>${title}${state.done[`${i}:${mode}`] ? ' ✓' : ''}</b>
                 <span>${description}</span><span class="duration">${duration}</span>`, 'mode', `${i}:${mode}`, 'mode')).join('')}</div>
@@ -175,9 +188,9 @@ function teach(prompt, step, body, plan, topic = '') {
 
 function conceptCards(i) {
     const plan = lessonPlans[i];
-    return plan.concepts.map(([title, text], j) => teach(title, 'Understand it', paragraphs([
+    return plan.concepts.map(([title, text, figure = plan.figure], j) => teach(title, 'Understand it', paragraphs([
         ...(j === 0 ? [units[i].intro] : []), text,
-    ]), plan, units[i].title));
+    ]), { ...plan, figure }, units[i].title));
 }
 
 function workedCard(i) {
@@ -189,7 +202,8 @@ function workedCard(i) {
 function quickCard(i) {
     const plan = lessonPlans[i];
     return teach('The method in three steps', 'Crash course', `<p>${plan.goal}</p>
-        ${list(plan.quick, 'ol')}<p class="formula">${plan.sheet}</p>`, plan, units[i].title);
+        ${list(plan.quick, 'ol')}<p class="formula">${plan.sheet}</p>`,
+        { ...plan, figure: plan.quickFigure || plan.figure }, units[i].title);
 }
 
 function practiceCards(questions, step = 'Do it yourself') {
@@ -224,11 +238,15 @@ function startMode(i, mode) {
 }
 
 function finalMenu() {
+    session = undefined;
     show(`${button('‹ Learning path', 'home')}
         <article class="lesson final-menu">
             <div class="sectionmark"><span>Final exam studio</span></div>
-            <h1>Put it all together</h1>
-            <p>Review the full course or work through a beam or truss from the first sketch to the final check.</p>
+            <div class="topic-heading">
+                <div><h1>Put it all together</h1>
+                    <p>Review the full course or work through a beam or truss from the first sketch to the final check.</p></div>
+                <div class="topic-val val-entrance">${valPortrait('guide')}</div>
+            </div>
             <div class="studio-grid">
                 <section><h2>Guided review</h2>
                     ${button('Cumulative review', 'final-review')}
@@ -290,7 +308,7 @@ function weak() {
 }
 
 function begin(queue, settings) {
-    session = { ...settings, queue, cursor: 0, results: [] };
+    session = { ...settings, queue, cursor: 0, results: new Map(), screens: new Map() };
     render();
 }
 
@@ -376,6 +394,14 @@ function render() {
         finish();
         return;
     }
+    const saved = session.screens.get(session.cursor);
+    if (saved) {
+        answer = saved.answer;
+        showGraphAnswer = saved.showGraphAnswer;
+        app.replaceChildren(saved.screen);
+        focusPage();
+        return;
+    }
     const question = session.queue[session.cursor];
     const instruction = question.type === 'teach';
     const exam = session.mode === 'exam';
@@ -383,12 +409,19 @@ function render() {
     answer = null;
     showGraphAnswer = null;
     show(`<article class="lesson study">
-        <div class="study-top">${button('× Exit', ['exam', 'final'].includes(session.mode) ? 'final' : 'home')}
+        <div class="study-top">
+            <nav class="study-nav" aria-label="Slide navigation">
+                ${button('× Exit', ['exam', 'final'].includes(session.mode) ? 'final' : 'home')}
+                <button type="button" data-action="back" ${position === 1 ? 'disabled' : ''}>‹ Back</button>
+            </nav>
             <span>${session.title}</span></div>
         <progress aria-label="Session progress" value="${session.cursor}" max="${session.queue.length}"></progress>
         <div class="sectionmark"><span>${position} of ${session.queue.length}${question.topic ? ` · ${question.topic}` : ''}</span>
             <span>${exam ? 'Practice exam' : question.step || 'Practice'}</span></div>
-        <h1>${question.prompt}</h1>
+        <div class="study-heading">
+            <h1>${question.prompt}</h1>
+            <div class="study-val val-entrance">${valPortrait('guide')}</div>
+        </div>
         ${question.type === 'fbd' ? '' : figureFor(question)}
         ${instruction ? `<div class="explanation">${question.body}</div>` : interaction(question)}
         <div id="feedback" aria-live="polite"></div>
@@ -475,9 +508,16 @@ function grade(question, input) {
     return input === question.answer;
 }
 
-function next() {
-    session.cursor += 1;
+function moveSlide(offset) {
+    if (session.cursor + offset < 0) return;
+    // Keep the slide's fields and diagram listeners together when revisiting it.
+    session.screens.set(session.cursor, { screen: app.firstElementChild, answer, showGraphAnswer });
+    session.cursor += offset;
     render();
+}
+
+function next() {
+    moveSlide(1);
 }
 
 function recordProgress(question, correct) {
@@ -498,7 +538,8 @@ function formulaResult(question, values) {
     });
     if (invalid.length) {
         document.getElementById('feedback').innerHTML =
-            '<p class="feedback bad">Check the highlighted values against the problem and the units beside each field.</p>';
+            `<div class="feedback bad"><div class="feedback-val val-pop">${valPortrait('think')}</div>
+                <p>Check the highlighted values against the problem and the units beside each field.</p></div>`;
         invalid[0].focus();
         return null;
     }
@@ -520,7 +561,7 @@ function checkAnswer(skipped = false) {
     const calculation = question.type === 'formula' ? formulaResult(question, answer) : '';
     if (calculation === null) return;
     const correct = !skipped && (question.type === 'formula' || grade(question, answer));
-    session.results.push({ question, correct, skipped });
+    session.results.set(session.cursor, { question, correct, skipped });
     if (session.mode === 'exam') {
         next();
         return;
@@ -528,15 +569,17 @@ function checkAnswer(skipped = false) {
     recordProgress(question, correct);
     saveProgress();
 
-    let message = correct ? 'Val approves. A rare institutional success.' : valLines[(session.results.length - 1) % valLines.length];
-    if (!correct && session.results.length % 5 === 0) {
-        const [story, source] = stories[(session.results.length / 5 - 1) % stories.length];
+    const count = session.results.size;
+    let message = correct ? 'Val approves. A rare institutional success.' : valLines[(count - 1) % valLines.length];
+    if (!correct && count % 5 === 0) {
+        const [story, source] = stories[(count / 5 - 1) % stories.length];
         message = `${story} <a href="${source}" target="_blank" rel="noopener noreferrer">Case study</a>`;
     }
     const feedback = document.getElementById('feedback');
     feedback.innerHTML = `${calculation}<div class="feedback ${correct ? '' : 'bad'}">
-        <div class="valmini">${val}</div><p><strong>${correct ? 'Structurally sound!' : 'Here’s how to work it out'}</strong></p>
-        <p>${question.explain}</p><small>${message}</small><div class="clear"></div></div>`;
+        <div class="feedback-val val-pop">${valPortrait(correct ? 'cheer' : 'think')}</div>
+        <div><p><strong>${correct ? 'Structurally sound!' : 'Here’s how to work it out'}</strong></p>
+        <p>${question.explain}</p><small>${message}</small></div></div>`;
     if (question.type === 'fbd') {
         document.getElementById('fbd-figure').innerHTML = beamFigure(question.b || center, question.answer);
     }
@@ -571,14 +614,16 @@ function sheet(i) {
 }
 
 function finish() {
-    const { mode, title, unit, results } = session;
+    const { mode, title, unit } = session;
+    const results = [...session.results.values()];
     const correct = results.filter(result => result.correct).length;
     if (mode === 'exam') results.forEach(result => recordProgress(result.question, result.correct));
     if (unit != null && results.length) state.done[`${unit}:${mode}`] = true;
     saveProgress();
     const skipped = results.filter(result => result.skipped).length;
+    session.screens.clear();
     show(`<article class="lesson result">
-        <div class="valmini">${val}</div>
+        <div class="result-val val-pop">${valPortrait('cheer')}</div>
         <h1>${title} complete</h1>
         <p>${correct} of ${results.length} correct · ${correct * 10} XP earned${skipped ? ` · ${skipped} skipped` : ''}</p>
         ${mode === 'exam' ? `<section class="exam-solutions"><h2>Worked solutions</h2>
@@ -600,11 +645,19 @@ const actions = {
     final: finalMenu, 'final-review': startFinalReview,
     beam: () => startWorkshop('beam'), truss: () => startWorkshop('truss'), exam: startExam,
     weak, steel: showSteel, sheet: value => sheet(Number(value)), 'sheet-all': () => sheet(),
+    restraint: key => {
+        const comparison = app.querySelector('.buckling-comparison');
+        if (!comparison || !Object.hasOwn(bucklingCases, key)) return;
+        comparison.querySelectorAll('.restraint-card').forEach(card =>
+            card.setAttribute('aria-pressed', String(card.dataset.value === key)));
+        comparison.querySelector('.restraint-detail').innerHTML = restraintComparison(key);
+    },
     hint: () => {
         document.getElementById('feedback').innerHTML =
-            `<p class="feedback">${session.queue[session.cursor].hint || 'Sketch the load, label units, and identify the equation that governs the result.'}</p>`;
+            `<div class="feedback"><div class="feedback-val val-pop">${valPortrait('think')}</div>
+                <p>${session.queue[session.cursor].hint || 'Sketch the load, label units, and identify the equation that governs the result.'}</p></div>`;
     },
-    check: () => checkAnswer(), skip: () => checkAnswer(true), next, print: () => window.print(),
+    check: () => checkAnswer(), skip: () => checkAnswer(true), next, back: () => moveSlide(-1), print: () => window.print(),
 };
 
 document.getElementById('home').addEventListener('click', home);
