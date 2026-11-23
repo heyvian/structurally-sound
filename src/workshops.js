@@ -121,7 +121,7 @@ const workshops = [
                 ['vertical', t('Vertical Bᵧ')], ['horizontal', t('Horizontal Bₓ'), t('A horizontal push would require resistance along the surface. The ideal roller has none.')],
                 ['moment', t('A reaction moment'), t('The roller also lets the beam rotate, so it supplies no reaction moment.')],
             ], 'vertical', t('The level roller provides only Bᵧ. On an incline the reaction would follow the normal to that incline.'), { drawing: 'support-arrows' }),
-            pick(t('Suppose we replace the pin by a built-in end. It can stop the beam from shifting in two directions and also keep its end from turning.'), t('Which reactions should a fixed end have in this plane?'), [
+            pick(t('Switch to a cantilever. In this drawing, the beam is built into the wall at A and free at the other end. The wall stops the beam from shifting in either direction and keeps it from turning.'), t('Which reactions should a fixed end have in this plane?'), [
                 ['three', t('Two force components and a moment')], ['two', t('Two force components'), t('Those two are enough for a pin. The fixed end also restrains rotation.')],
                 ['one', t('One vertical force'), t('That is a horizontal roller. A fixed end restrains three planar motions.')],
             ], 'three', t('The fixed end reacts with a horizontal force, a vertical force, and a moment.'), { drawing: 'fixed-support' }),
