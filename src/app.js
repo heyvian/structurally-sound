@@ -118,16 +118,19 @@ function methodPanel(method, open = false) {
     </details>`;
 }
 
+const questionMethodId = question => question.method || questionMethods.get(question.key);
+
 function questionMethod(question) {
-    const id = questionMethods.get(question.key);
+    const id = questionMethodId(question);
     const guided = question.step === t('Do it together') || question.type === 'formula';
-    const firstUse = !session.queue.slice(0, session.cursor).some(earlier => questionMethods.get(earlier.key) === id);
+    const firstUse = !session.queue.slice(0, session.cursor).some(earlier => questionMethodId(earlier) === id);
     return methodPanel(methods[id], guided || firstUse);
 }
 
 function practiceMistake(question, input) {
     if (question.type === 'number' && input * question.answer < 0 && grade(question, -input)) return 'signs';
-    const method = questionMethods.get(question.key);
+    const method = questionMethodId(question);
+    if (method === 'zeroShear') return 'zero-shear';
     if (method === 'reactions' || (method === 'balance' && question.type === 'number')) return 'reactions';
     if (method === 'trig' && question.type === 'choice') return 'trig';
     const vector = practiceVectors[question.key];
@@ -179,7 +182,7 @@ function learningProgress() {
 
 function learningTile(i) {
     const run = workshopProgress.runs[i];
-    const total = workshopVersion(i, attemptNumber(run)).turns.length;
+    const total = workshopVersion(i, attemptNumber(run), run).turns.length;
     const records = run?.records;
     const done = Array.isArray(records) ? records.slice(0, total).filter(record => ['correct', 'shown'].includes(record?.status)).length : 0;
     const stars = workshopStars(i);
@@ -401,7 +404,7 @@ function render() {
     }
     const question = session.queue[session.cursor];
     const exam = session.mode === 'exam';
-    const refresher = practiceReview[questionMethods.get(question.key)];
+    const refresher = practiceReview[questionMethodId(question)];
     const position = session.cursor + 1;
     answer = null;
     showGraphAnswer = null;
@@ -655,8 +658,7 @@ function renderStudyFeedback(result, calculation) {
 
 function studySheetContent(i) {
     const plan = lessonPlans[i];
-    const ids = new Set([calculationCards[i], ...guidedQuestions[i], ...unitQuestions[i]]
-        .map(question => questionMethods.get(question.key)));
+    const ids = new Set([calculationCards[i], ...guidedQuestions[i], ...unitQuestions[i]].map(questionMethodId));
     return `<section class="sheet-topic"><h2>${units[i].title}</h2>
         <p class="formula">${plan.sheet}</p>
         ${figureFor({ b: plan.beam, fig: plan.figure })}

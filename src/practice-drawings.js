@@ -242,6 +242,7 @@ function conceptPlate(id) {
 
 function practiceDrawing(question, solved = false) {
     if (question.type === 'fbd') return fbdDrawing(question, solved ? question.answer : undefined, solved);
+    if (question.shearSegment) return shearSegmentFigure(question.shearSegment, { base: solved, crossing: solved, area: solved });
     const key = question.key;
     if (practiceRoofAreas[key]) return roofAreaPlate(...practiceRoofAreas[key]);
     if (practiceShearAreas[key]) return shearAreaPlate(...practiceShearAreas[key]);

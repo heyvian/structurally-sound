@@ -28,7 +28,7 @@ function saveWorkshops() {
 function workshopRun(i) {
     const saved = workshopProgress.runs[i];
     if (saved && Array.isArray(saved.records) && Number.isInteger(saved.cursor) &&
-        saved.cursor >= 0 && saved.cursor <= workshopVersion(i, attemptNumber(saved)).turns.length) return saved;
+        saved.cursor >= 0 && saved.cursor <= workshopVersion(i, attemptNumber(saved), saved).turns.length) return saved;
     return workshopProgress.runs[i] = { cursor: 0, records: [] };
 }
 
@@ -37,7 +37,7 @@ const archivedRuns = i => Array.isArray(workshopProgress.archives[i]) ? workshop
 
 function workshopFinished(i) {
     const run = workshopProgress.runs[i];
-    return Boolean(run?.finished && run.records?.[workshopVersion(i, attemptNumber(run)).turns.length - 1]?.status);
+    return Boolean(run?.finished && run.records?.[workshopVersion(i, attemptNumber(run), run).turns.length - 1]?.status);
 }
 
 function workshopStars(i) {
@@ -155,6 +155,7 @@ function refresherOffer(skill, action = 'data-tutor') {
         signs: t('You’ve found the right magnitude twice. Want to practice which direction gets the minus sign?'),
         reactions: t('The reactions have been tricky. We can practice choosing a pivot and solving the two equations before coming back.'),
         trig: t('The angle has caught you twice. A quick look at the triangle can help.'),
+        'zero-shear': t('Let’s look at where the shear line hits zero and how that gives us the triangle’s base.'),
     };
     return `<aside class="refresher-offer"><p>${copy[skill]}</p>
         <button type="button" ${action}="refresh" data-value="${skill}">${t`Try ${offer.title.toLowerCase()}`}</button></aside>`;
@@ -196,7 +197,7 @@ function tutorDrawing(workshop, run, i, interactive, current) {
     let pastSketch = null;
     if (current && workshop.repeat && turn.type === 'sketch' && turn.kind === 'M') {
         pastSketch = workshop.turns.slice(0, i).findLast((previous, j) => previous.type === 'sketch' && previous.kind === 'V' && run.records[j]?.status);
-    } else if (current && workshop === workshops[4]) {
+    } else if (current && !turn.shearSegment && (workshop.index === 4 || workshop === workshops[4])) {
         const from = i > 9 ? 10 : 3;
         pastSketch = workshop.turns.slice(from, i).findLast((previous, j) => previous.type === 'sketch' && run.records[from + j]?.status);
     }
@@ -293,7 +294,7 @@ function renderTutor(index, focus = 'title') {
     const reviewing = archiveAttempt !== null;
     const run = reviewing ? previous.find(attempt => attemptNumber(attempt) === archiveAttempt) : current;
     const attempt = attemptNumber(run);
-    const workshop = workshopVersion(index, attempt);
+    const workshop = workshopVersion(index, attempt, run);
     const complete = run.cursor === workshop.turns.length;
     const title = units[index].title;
     const following = unitOrder[unitOrder.indexOf(index) + 1];
@@ -305,6 +306,7 @@ function renderTutor(index, focus = 'title') {
                 <span class="earned-stars">${starCount(workshopStars(index))}</span>
                 <p>${t`Attempt ${attempt}`}</p>
                 ${reviewing ? button(t('Current attempt'), 'unit', index) : complete ? button(t('Redo with new problems'), 'redo-workshop', index, 'primary') : ''}
+                ${index === 4 && complete ? button(refreshers['zero-shear'].title, 'refresh', 'zero-shear') : ''}
                 ${previous.length ? `<details class="tutor-attempt-list"><summary>${t('Past attempts')}</summary>
                     ${previous.slice().reverse().map(saved => {
                         const number = attemptNumber(saved);

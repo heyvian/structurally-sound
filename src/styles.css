@@ -607,6 +607,10 @@ legend { padding: 0 6px; font: 700 13px var(--mono); }
 .plate text, .graph text { fill: var(--ink); font: 12px var(--mono); }
 .diagram-line, .diagram-fill, .diagram-dash, .diagram-arrow { stroke: var(--ink); stroke-width: 2; fill: none; }
 .diagram-fill { fill: #dbe5f1; }
+.shear-segment-line { stroke: var(--blue); stroke-width: 3; fill: none; }
+.shear-load-area { fill: var(--peach); }
+.diagram [data-shear-zero] { fill: var(--paper); stroke: var(--blue); stroke-width: 2; }
+.shear-segment-draft { stroke: var(--red); stroke-width: 2; stroke-dasharray: 4 3; fill: none; }
 .diagram-dash { stroke-dasharray: 5 3; stroke-width: 1.5; }
 .diagram-arrow { stroke: #a7462e; marker-end: var(--diagram-arrow); }
 .curve-point circle { fill: #fffdf6; stroke: var(--ink); }

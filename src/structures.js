@@ -71,6 +71,37 @@ function graphQuestion(beam, kind) {
     };
 }
 
+function uniformShearSegment(start, end, initial, w) {
+    const slope = -w;
+    const final = initial + slope * (end - start);
+    const run = -initial / slope;
+    return { start, end, initial, w, slope, final, run, zero: start + run, area: initial * run / 2 };
+}
+
+function shearSegmentSetup({ start, end, initial, w }) {
+    return t`In the highlighted segment, a uniform downward load of ${numberText(w)} kN/m runs from x = ${numberText(start)} m to x = ${numberText(end)} m. The shear entering the segment is +${numberText(initial)} kN.`;
+}
+
+function shearCrossingQuestion(segment) {
+    const { start, initial, w, run, zero } = segment;
+    return {
+        ...N(t('At what x-coordinate does shear cross zero? Measure x from the left end of the beam.'), zero,
+            t`To reach zero, the area of the load rectangle must remove the starting shear. The base is ${numberText(initial)} kN ÷ ${numberText(w)} kN/m = ${numberText(run)} m. That is a drop of ${numberText(w)} kN per metre. Add the starting coordinate. x = ${numberText(start)} m + ${numberText(run)} m = ${numberText(zero)} m.`,
+            t('Set the area of the load rectangle wd equal to the starting shear V₀. Solve for d, then add the x-coordinate where the load starts.'), 'm'),
+        setup: shearSegmentSetup(segment), shearSegment: segment, method: 'zeroShear',
+    };
+}
+
+function shearTriangleQuestion(segment) {
+    const { start, initial, run, area } = segment;
+    return {
+        ...N(t('Find the change in bending moment from the start of the highlighted segment to the zero-shear crossing.'), area,
+            t`The triangle starts at x = ${numberText(start)} m. Its base is ${numberText(run)} m and its height is +${numberText(initial)} kN. ΔM = ½ × ${numberText(run)} m × ${numberText(initial)} kN = +${numberText(area)} kN·m.`,
+            t('First find the triangle’s base using zero shear. Multiply the base by the shear at the start, then divide by two.'), 'kN·m'),
+        setup: shearSegmentSetup(segment), shearSegment: segment, method: 'zeroShear',
+    };
+}
+
 function beamQs(beam) {
     const { RA, RB, forces, Vmax, Mmax } = analyze(beam);
     const total = RA + RB;

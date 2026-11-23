@@ -308,6 +308,15 @@ const beams=[{L:8,a:0,b:8,points:[{x:2,p:24}],udls:[{s:4,e:8,w:8}]},{L:10,a:0,b:
 const reviewBeam = { L: 6, a: 0, b: 6, points: [{ x: 2, p: 15 }], udls: [{ s: 2, e: 5, w: 4 }] };
 
 units[3].q.push(...beamQs(reviewBeam).slice(0,2));units[4].q.push(...beamQs(beams[2]).slice(2),...beamQs(beams[1]).slice(2));
+const positiveShearPatch = uniformShearSegment(10, 12, 13, 4);
+units[4].q.push(
+    shearTriangleQuestion(uniformShearSegment(2, 9, 21, 7)),
+    { ...Q(t('Does shear reach zero within the highlighted loaded segment?'),
+        [t('Yes, partway through the segment'), t('No, shear stays positive throughout the segment'), t('Yes, exactly at the right end')], 1,
+        t('The segment is 2 m long. Shear falls by (4 kN/m) × (2 m) = 8 kN, leaving +5 kN at the end. The computed zero would be 3.25 m from the start, beyond the segment, so use the actual shear shape here.'),
+        t('Compare the distance needed to reach zero with the length over which this slope applies.')),
+        setup: shearSegmentSetup(positiveShearPatch), shearSegment: positiveShearPatch, method: 'zeroShear' },
+);
 
 const memberSign = t('For member forces, give a positive number in tension (pulling) or a negative number in compression (pushing).');
 const trussQs = [

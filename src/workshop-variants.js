@@ -6,14 +6,27 @@ const repeatScenarios = [
 ];
 
 const repeatVersions = new Map();
+const shearVersions = new Map();
 
-function workshopVersion(index, attempt = 1) {
-    if (attempt === 1) return workshops[index];
-    const key = `${index}/${attempt}`;
-    if (!repeatVersions.has(key)) {
-        repeatVersions.set(key, { ...workshops[index], repeat: true, turns: repeatScenarios[index](attempt - 1) });
+function workshopVersion(index, attempt = 1, run) {
+    let workshop = workshops[index];
+    if (attempt > 1) {
+        const key = `${index}/${attempt}`;
+        if (!repeatVersions.has(key)) {
+            repeatVersions.set(key, { ...workshop, repeat: true, turns: repeatScenarios[index](attempt - 1) });
+        }
+        workshop = repeatVersions.get(key);
     }
-    return repeatVersions.get(key);
+    // Completed attempts keep their original length and star. In-progress work
+    // keeps the same step positions, with the new exercise added at the end.
+    if (index !== 4 || (run?.finished && run.cursor === workshop.turns.length)) return workshop;
+    if (!shearVersions.has(attempt)) {
+        const w = 5 + attempt;
+        const run = 2 + (attempt % 5) / 2;
+        const segment = attempt === 1 ? zeroShearLesson : uniformShearSegment(2 + attempt, 8 + attempt, w * run, w);
+        shearVersions.set(attempt, { ...workshop, index, turns: [...workshop.turns, ...shearCrossingLesson(segment)] });
+    }
+    return shearVersions.get(attempt);
 }
 
 function repeatNumber(intro, prompt, expected, unit, solution, figure, extra = {}) {

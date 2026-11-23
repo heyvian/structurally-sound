@@ -42,6 +42,48 @@ const sketch = (beam, kind, intro, solution, extra = {}) => ({
     ...graphQuestion(beam, kind), type: 'sketch', intro, solution, ...extra,
 });
 
+function shearCrossingLesson(segment) {
+    const { start, initial, w, run, zero, area } = segment;
+    const crossing = shearCrossingQuestion(segment);
+    const triangle = shearTriangleQuestion(segment);
+    const [v, load, d, x] = [initial, w, run, zero].map(numberText);
+    return [
+        num(t`${shearSegmentSetup(segment)} Use the upper load diagram to find how far we must go to remove the starting shear. The rectangle has height w and unknown width d. Its area wd is the downward force added over that distance, so it reduces V by wd. This is also the straight-line equation V = V₀ − wd.`,
+            t('Find the triangle’s horizontal base d, measured from the start of the loaded segment to V = 0.'), run, 'm',
+            t`The shear has ${v} kN to lose and loses ${load} kN per metre. It takes ${d} m to reach zero.`, {
+                newExample: true, symbol: 'd', shearSegment: segment, shearTarget: 'run', drawing: 'shear-plot',
+                units: t('kN ÷ (kN/m) = m. A force divided by a force per metre gives a distance.'),
+                hint: t('The crossing occurs when the load rectangle removes exactly the starting shear. Set its area wd equal to V₀ and solve for d.'),
+                wrong: [[zero, t('That is the coordinate measured from the beam’s left end. The triangle’s base starts at the loaded segment.')]],
+                algebra: [
+                    ['ΔV = −wd', t('The upper diagram shows load intensity. Over a distance d, the loaded rectangle has area wd. That is the amount of shear we lose.')],
+                    [`0 = ${v} kN − (${load} kN/m)d`, t('At the axis crossing, the vertical coordinate V equals zero.')],
+                    [`(${load} kN/m)d = ${v} kN`, t('Add wd to both sides so the distance term is on its own side.')],
+                    [`d = (${v} kN) ÷ (${load} kN/m) = ${d} m`, t('Divide both sides by w. This is the base of the triangle.')],
+                ],
+                calculation: paperCalculation('d', t('Triangle base to zero shear'), 'm',
+                    [['V₀', t('Shear at the start of the loaded segment'), 'kN', initial], ['w', t('Downward load intensity'), 'kN/m', w]],
+                    [0], [1], (shear, intensity) => shear / intensity),
+            }),
+        num(t`You found d = ${d} m. The loaded segment starts at x = ${numberText(start)} m. The beam coordinate x and the triangle base d use different starting points.`,
+            crossing.prompt, zero, 'm', crossing.explain, {
+                shearSegment: segment, shearTarget: 'zero', symbol: 'x', drawing: 'shear-plot', hint: crossing.hint,
+                wrong: [[run, t('That is the triangle’s base. Add the beam coordinate where the triangle starts.')]],
+            }),
+        num(t`The drawing now shades the positive shear triangle. Its base is ${d} m and the crossing is at x = ${x} m. Find the signed area to see how much bending moment changes.`,
+            triangle.prompt, area, 'kN·m', `${triangle.explain} ${t('Add this change to the bending moment at the start of the segment to get the moment at the crossing.')}`, {
+                shearSegment: segment, shearTarget: 'area', symbol: 'ΔM', drawing: 'shear-plot', hint: triangle.hint,
+                units: t('The base is in m and the signed height is in kN. Their product is in kN·m.'),
+                wrong: [[area * 2, t('That is the full rectangle. This area is a triangle, so halve it.')]],
+                calculation: paperCalculation('ΔM', t('Change in bending moment'), 'kN·m',
+                    [['d', t('Triangle base to zero shear'), 'm', run], ['V₀', t('Shear at the start of the loaded segment'), 'kN', initial]],
+                    ['½ ×', 0, '×', 1], null, (base, shear) => base * shear / 2),
+            }),
+    ];
+}
+
+const zeroShearLesson = uniformShearSegment(3, 8, 15, 6);
+
 const workshops = [
     {
         title: t('Follow the weight of a roof'), drawing: scene(t('Gravity load path'), 'load-path'),
@@ -166,7 +208,7 @@ const workshops = [
     {
         title: t('Draw the invisible forces in a beam'), drawing: scene(t('Uniformly loaded simple span'), 'shear-beam'),
         outcome: t('Start with reactions. A point force jumps the shear, distributed load changes its slope, and the signed area under shear changes moment. For ARCH 600, plot positive sagging below zero.'),
-        refs: ['reactions', 'area', 'signs'],
+        refs: ['reactions', 'zero-shear', 'area', 'signs'],
         turns: [
             num(t('Slice an imaginary beam. The two cut faces must still push and turn against each other for each half to balance. Those internal effects are shear V and bending moment M. Start with the external reactions. Our 8 m beam has 6 kN/m evenly along its span.'), t('What upward force does each support carry?'), 24, 'kN',
                 t('The total is 6 × 8 = 48 kN. Symmetry splits it equally, so Aᵧ = Bᵧ = 24 kN.'), { skill: 'reactions', units: t('(6 kN/m) × (8 m) = 48 kN. Dividing by two supports keeps the unit in kN.') }),
@@ -179,11 +221,17 @@ const workshops = [
             sketch(shearBeam, 'V', t('Let’s put those decisions onto a plot. The shear just inside A is +24 kN, and it loses 6 kN per metre over 8 m. The upward reaction at B brings it back to zero outside the beam. Enter the values on both sides of the support jumps.'),
                 t('From left to right the shear values are 0, +24, −24 and 0 kN. The span segment slopes down, and the support jumps are vertical.'),
                 { hint: t('Use zero outside either support. Enter the left and right sides of each jump separately.') }),
-            pick(t('Moment changes by the signed area under the shear plot. While V is positive, M grows. Once V goes negative, M falls. Look where the shear changes sign.'), t('Tap where the bending moment reaches its largest positive value.'), [
+            pick(t('We need to find the base of the positive triangle. The constant load removes 6 kN for every metre of beam. For the shear to fall from +24 kN to zero, the load rectangle must have area 24 kN. Find how many metres of load make that area.'), t('Tap where the bending moment reaches its largest positive value.'), [
                 ['left', t('Support A at x = 0 m'), t('At this simple end without an applied couple, moment is zero.')],
                 ['middle', t('Midspan at x = 4 m')],
                 ['right', t('Support B at x = 8 m'), t('The negative shear after midspan has already reduced the moment back to zero at B.')],
-            ], 'middle', t('At x = 4 m, 24 − 6x = 0. Moment changes from growing to falling there.'), { drawing: 'shear-plot', hot: ['left','middle','right'] }),
+            ], 'middle', t('At x = 4 m, 24 − 6x = 0. Moment changes from growing to falling there.'), {
+                drawing: 'shear-plot', hot: ['left','middle','right'], algebra: [
+                    ['0 = 24 kN − (6 kN/m)x', t('At the crossing, V = 0. The load starts at x = 0, so x is also the triangle base.')],
+                    ['(6 kN/m)x = 24 kN', t('Add the load term to both sides.')],
+                    ['x = (24 kN) ÷ (6 kN/m) = 4 m', t('Divide by the load intensity. The result is the base of the shear triangle in metres.')],
+                ],
+            }),
             num(t('At A, M starts at zero. The positive shear from A to midspan is a triangle with base 4 m and height 24 kN. Its signed area is the increase in moment.'), t('Find the moment at midspan.'), 48, 'kN·m',
                 t('½ × 4 m × 24 kN = +48 kN·m. You can also use wL²/8 = 6×8²/8 = 48 for this particular simple-span UDL.'), { drawing: 'positive-shear', units: t('The graph’s width is in m and its height is in kN. Graph area is m × kN = kN·m.'), wrong: [[96, t('96 kN·m is the full rectangle. The shear falls to zero, so the area is only half that.')]] }),
             pick(t('The shear line slopes down uniformly, so moment changes quickly at first, then more slowly, with zero slope at midspan. On our course drawings positive sagging is drawn below the datum.'), t('What should the moment diagram look like?'), [
@@ -341,7 +389,7 @@ const workshops = [
     {
         title: t('Bring it together on one beam'), drawing: scene(t('Start with the same beam throughout'), 'shear-beam'),
         outcome: t('Keep the applied loads, reactions, and internal diagrams together. Convert the peak moment before computing required S and compare the table in its displayed units.'),
-        refs: ['reactions', 'area', 'units', 'section'],
+        refs: ['reactions', 'zero-shear', 'area', 'units', 'section'],
         turns: [
             pick(t('Here is one study problem from start to finish. The 8 m beam carries 6 kN/m over its full length. Imagine cutting it free from the building. An ideal pin is at A and an ideal roller on a horizontal surface is at B.'), t('Which external reactions belong on the free-body diagram?'), [
                 ['right',t('Aₓ, Aᵧ and Bᵧ')], ['moments',t('Aᵧ, Bᵧ and two end moments'),t('These supports can rotate. A pin also restrains horizontal translation.')],
@@ -349,7 +397,7 @@ const workshops = [
             ], 'right', t('Aₓ, Aᵧ and Bᵧ belong on the diagram. Use the equations to find their values.')),
             num(t('The uniform 6 kN/m acts over 8 m. Its resultant is at midspan, so the two supports split it equally.'), t('Find either vertical reaction.'), 24, 'kN',
                 t('6×8 = 48 kN. Half is 24 kN upward at each end, and the horizontal pin reaction is zero.'), { skill: 'reactions' }),
-            pick(t('On the shear diagram, V = 24 − 6x in the span. Locate the point where V crosses zero. The positive shear before it increases M, and negative shear after it decreases M.'), t('Tap the position of the largest positive moment.'), [
+            pick(t('On the shear diagram, V = 24 − 6x in the span, with V in kN and x in m. Set V = 0 and divide 24 kN by 6 kN/m to get the triangle’s base. The positive shear before the crossing increases M, and the negative shear after it decreases M.'), t('Tap the position of the largest positive moment.'), [
                 ['left',t('Support A'),t('V has just jumped here, but there is no accumulated shear area and M is zero.')],
                 ['middle','Midspan'], ['right',t('Support B'),t('The signed positive and negative shear areas have cancelled by this point.')],
             ], 'middle', t('At midspan, the shear is 24 − 6×4 = 0, so this is the peak.'), { drawing: 'shear-plot', hot: ['left','middle','right'] }),
@@ -390,6 +438,11 @@ const workshops = [
 ];
 
 const refreshers = {
+    'zero-shear': {
+        title: t('Find zero shear and the triangle base'),
+        drawing: scene(t('Shear under a uniform load'), 'shear-plot'),
+        turns: shearCrossingLesson(zeroShearLesson),
+    },
     units: {
         title: t('Track the units'),
         drawing: scene(t('Force × distance'), 'unit-ruler'),

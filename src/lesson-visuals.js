@@ -90,9 +90,10 @@ function knownTruss(workshop, run, i) {
 }
 
 function progressiveLessonDrawing(workshop, run, i) {
-    const index = workshops.indexOf(workshop);
+    const index = workshop.index ?? workshops.indexOf(workshop);
     const turn = workshop.turns[i];
     const record = run.records[i] || {};
+    if (turn.shearSegment) return workshopFigure(lessonShearSegment(turn, record.status, diagramDraft(record.draft, record.draftLocale).value));
     if (turn.type === 'fbd') {
         return workshopFigure(fbdDrawing(turn, record.status ? turn.answer : record.draft || [], true));
     }
@@ -156,9 +157,9 @@ function practiceReactionResultant() {
 }
 
 function lessonValues(workshop, run, i, all) {
-    const index = workshops.indexOf(workshop);
+    const index = workshop.index ?? workshops.indexOf(workshop);
     const first = Math.max(0, workshop.turns.findLastIndex((turn, step) => step <= i && turn.newExample));
-    const symbols = workshop.repeat ? workshop.turns.map(turn => turn.symbol) : lessonSymbols[index] || {};
+    const symbols = workshop.turns.map((turn, j) => turn.symbol || (!workshop.repeat && lessonSymbols[index]?.[j]));
     const entries = Object.entries(symbols).filter(([step, symbol]) => symbol && Number(step) >= first && Number(step) <= i)
         .filter(([step]) => run.records[step]?.status || Number(step) === i);
     const rows = (all ? entries : entries.filter(([step]) => Number(step) === i)).map(([step, name]) => {
@@ -175,11 +176,17 @@ function diagramValue({ value, negative }, unit) {
 
 function updateLessonDrawing(root, workshop, i, raw) {
     const draft = diagramDraft(raw, locale);
+    const turn = workshop.turns[i];
     const label = root.querySelector('[data-lesson-value]');
-    if (label) label.textContent = diagramValue(draft, workshop.turns[i].unit);
+    if (label) label.textContent = diagramValue(draft, turn.unit);
+    if (turn.shearSegment) {
+        const svg = root.querySelector('[data-lesson-live] svg');
+        if (svg) svg.outerHTML = lessonShearSegment(turn, false, draft.value);
+        return;
+    }
     const arrow = root.querySelector('[data-lesson-live] [data-lesson-force]');
     const mini = root.querySelector('[data-lesson-mini]');
-    const index = workshops.indexOf(workshop);
+    const index = workshop.index ?? workshops.indexOf(workshop);
     if (arrow) arrow.innerHTML = lessonForce(workshop, index, i, draft.value, draft.negative);
     if (mini) mini.innerHTML = miniForce(workshop, i, draft);
     if (index === 6 && i === 1) {
@@ -188,13 +195,23 @@ function updateLessonDrawing(root, workshop, i, raw) {
     }
 }
 
+function lessonShearSegment(turn, solved, draft) {
+    const { shearSegment, shearTarget } = turn;
+    return shearSegmentFigure(shearSegment, {
+        base: solved || shearTarget !== 'run',
+        crossing: shearTarget === 'area' || (solved && shearTarget === 'zero'),
+        area: shearTarget === 'area',
+        draft: solved || shearTarget === 'area' ? undefined : shearTarget === 'zero' ? draft - shearSegment.start : draft,
+    });
+}
+
 function miniForce(workshop, i, { value, negative }) {
     if (workshop.repeat) {
         const { arrow, unit, momentAt, symbol } = workshop.turns[i];
         if (momentAt) return momentGlyph(59, 51, symbol, value, negative);
         return arrow ? forceGlyph({ ...arrow, x: 62, y: 52, length: 27, unit, labelSide: 'right' }, value, negative) : '';
     }
-    const index = workshops.indexOf(workshop);
+    const index = workshop.index ?? workshops.indexOf(workshop);
     const name = lessonSymbols[index]?.[i];
     if (index === 3 && (i === 3 || i === 4)) return momentGlyph(59, 51, name, value, negative);
     const force = lessonForces[`${index}-${i}`];

@@ -183,6 +183,41 @@ function plate(label, drawing, height = 180) {
         </marker></defs><g style="--diagram-arrow:url(#${arrow})">${drawing}</g></svg>`;
 }
 
+function shearSegmentFigure(segment, { base, crossing, area, draft } = {}) {
+    const { start, end, w, initial, final, run, zero } = segment;
+    const left = 76, right = 417, axis = 140;
+    const scale = Math.max(initial, Math.abs(final));
+    const x = distance => left + distance / (end - start) * (right - left);
+    const y = shear => axis - shear / scale * 55;
+    const vertex = x(run);
+    const label = base ? `d = ${numberText(run)} m` : 'd = ?';
+    const hasRoot = run > 0 && run < end - start;
+    const candidate = Number.isFinite(draft) && draft >= 0 && draft <= end - start ? x(draft) : null;
+    const loadWidth = candidate ?? (base && hasRoot ? vertex : left);
+    return plate(t`Shear diagram for the highlighted load segment from ${numberText(start)} m to ${numberText(end)} m. Shear changes from +${numberText(initial)} kN to ${numberText(final)} kN.`, `
+        <text x="246" y="20" text-anchor="middle">w = ${numberText(w)} kN/m</text>
+        <path class="diagram-dash" d="M${left} 60V30H${right}V60"/>
+        ${loadWidth > left ? `<rect data-shear-load-area class="shear-load-area" x="${left}" y="30" width="${loadWidth - left}" height="30"/>` : ''}
+        <path class="diagram-line" d="M${left} 60H${right}"/>
+        ${Array.from({ length: 7 }, (_, i) => `<path class="diagram-arrow" d="M${left + i * (right - left) / 6} 30v23"/>`).join('')}
+        <path class="diagram-dash" d="M${left} 64V234M${right} 64V234"/>
+        <text x="12" y="83">V (kN)</text>
+        ${area && hasRoot ? `<path data-shear-triangle class="diagram-fill" d="M${left} ${axis}V${y(initial)}L${vertex} ${axis}Z"/>` : ''}
+        <path class="diagram-line" d="M46 ${axis}H443"/>
+        <text x="34" y="${axis + 4}">0</text><text x="447" y="${axis + 4}">x</text>
+        <path class="shear-segment-line" d="M${left} ${y(initial)}L${right} ${y(final)}"/>
+        <text x="${left + 8}" y="${y(initial) - 8}">+${numberText(initial)} kN</text>
+        <text x="${right - 6}" y="${y(final) + 17}" text-anchor="end">${final > 0 ? '+' : ''}${numberText(final)} kN</text>
+        ${hasRoot ? `<circle data-shear-zero="${crossing ? fmt(zero) : ''}" cx="${vertex}" cy="${axis}" r="5"/>
+            ${base ? `<path class="diagram-dash" d="M${vertex} 60V${axis - 6}"/>` : ''}
+            <path class="diagram-dash" d="M${vertex} ${axis + 7}V204M${left} 204H${vertex}"/>
+            <text x="${(left + vertex) / 2}" y="221" text-anchor="middle">${label}</text>` : ''}
+        ${crossing && hasRoot ? `<text x="${vertex}" y="251" text-anchor="middle">x = ${numberText(zero)} m</text>` : ''}
+        ${candidate === null ? '' : `<path data-shear-draft class="shear-segment-draft" d="M${candidate} 30V195"/><circle cx="${candidate}" cy="${axis}" r="4" class="shear-segment-draft"/>`}
+        <text x="${left}" y="251" text-anchor="middle">x = ${numberText(start)} m</text>
+        <text x="${right}" y="251" text-anchor="middle">x = ${numberText(end)} m</text>`, 264);
+}
+
 function rightTrianglePlate({ run, rise, diagonal, unit = '', angle } = {}) {
     const side = (name, length) => length == null ? name : `${name} · ${numberText(length)}${unit ? ` ${unit}` : ''}`;
     const left = 140, base = 145;

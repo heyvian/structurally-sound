@@ -151,6 +151,7 @@ const lessonPlans = [
         },
         concepts: [
             [t('Cut the beam to see internal forces'), t('At a cut, the exposed shear and bending moment keep the remaining beam segment in equilibrium. Work from left to right. An upward concentrated force jumps V up and a downward one jumps V down. A uniform downward load gives dV/dx = −w. Between loads, V stays constant.')],
+            [t('Find zero shear and the triangle base'), t('First use the load diagram. Under a uniform downward load, the load area over a distance d is a rectangle of area wd, in kN. Shear falls by that amount. To reach V = 0 from V₀, set wd = V₀ and solve d = V₀/w. Check that d lies within the segment. Add the starting coordinate to find x. Then use d as the base of the shear triangle. Its signed area is the change in bending moment.')],
             [t('Build M from V'), t('The slope dM/dx equals V, so the signed area under V between two stations is the change in M. Constant V gives straight M. Linear V gives quadratic M. A point force changes the slope of M without jumping M. An applied couple changes M abruptly. We draw positive V above zero and positive sagging M below zero.')],
             [t('Check critical stations'), t('Evaluate V on both sides of point forces. Check M at ends, changes in load, and anywhere continuous V crosses zero. Moment at a simple support at the end of a beam is zero without an end couple. At a support inside a beam with an overhang, moment can be nonzero.')],
         ],
@@ -162,10 +163,11 @@ const lessonPlans = [
             { ...N(t('For a 6 m beam with a 12 kN midpoint load, V = +6 kN on the first 3 m. Find M at midspan.'),
                 18, t('The area under V is a rectangle: 6 kN × 3 m = +18 kN·m.'), t('Integrate shear by taking its area.'), 'kN·m'), b: center },
             graphQuestion(center, 'M'),
+            shearCrossingQuestion(uniformShearSegment(3, 9, 12, 5)),
         ],
         quick: [t('Solve reactions and mark stations at force jumps and changes in w.'), t('Build V from jumps and slopes, then M from signed V areas.'), t('Check end values and find maxima at stations and zero-shear locations.')],
         pitfalls: [t('Do not replace a UDL with one point load when sketching V and M.'), t('Plotting positive sagging below the baseline changes the drawing, while its numerical sign stays positive.')],
-        sheet: t('dV/dx = −w, dM/dx = V. Point force → V jump. Couple → M jump. Check each V = 0 and every critical station.'),
+        sheet: t('Load area gives ΔV. Shear area gives ΔM. Under a uniform downward load, ΔV = −wd. If zero lies inside the segment, d = V₀/w, x = x₀ + d, and the shear triangle adds ΔM = ½dV₀. Point force → V jump. Couple → M jump.'),
     },
     {
         goal: t('Relate force, geometry, and deformation, then check a simple section against allowable stress.'),
