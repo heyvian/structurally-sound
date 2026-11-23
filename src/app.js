@@ -322,7 +322,8 @@ function options(question, multiple = false) {
 }
 
 function formulaFields(question) {
-    return `<p class="formula">${question.symbol} = ${question.expression}</p>
+    return `<p class="formula-output"><var>${escapeTutor(question.symbol)}</var> ${escapeTutor(question.label)} (${escapeTutor(question.unit)})</p>
+                <p class="formula">${question.symbol} = ${question.expression}</p>
                 <fieldset class="formula-fields"><legend>${t`Enter the values from the problem`}</legend>
                     <div class="station-grid">${question.inputs.map(([symbol, label, unit, expected], i) =>
                         `<label>${symbol} · ${label}${unit ? ` (${unit})` : ''}

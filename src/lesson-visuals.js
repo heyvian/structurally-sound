@@ -1,7 +1,8 @@
 // Workshop and turn positions are stable so earlier saved work still lines up
 // with the drawing and any values already found.
 const lessonSymbols = [
-    { 3: 'bₜ', 4: 'w', 5: 'W', 6: 'Wedge', 7: 'Wunit' },
+    { 3: t('Strip width bₜ'), 4: t('Load per metre of beam'), 5: t('Total load on the middle beam'),
+        6: t('Total load on the edge beam'), 7: t('Rooftop unit weight') },
     { 2: 'Fₓ', 4: 'Fᵧ', 5: 'Rₓ', 6: 'R' },
     { 3: 'Aₓ' },
     { 0: 'W', 3: 'Mₐ', 4: 'Mᵦ', 6: 'Bᵧ', 7: 'Aᵧ', 9: 'd' },
@@ -15,7 +16,7 @@ const lessonSymbols = [
 ];
 
 const lessonForces = {
-    '1-2': [78, 148, 1, 0, 73], '1-4': [78, 148, 0, -1, 64], '1-5': [78, 148, 1, 0, 73],
+    '1-2': [78, 148, 1, 0, 73], '1-4': [78, 148, 0, -1, 64], '1-5': [175, 142, 1, 0, 73],
     '2-3': [85, 98, 1, 0, 49],
     '3-6': [472, 82, 0, -1, 51], '3-7': [48, 82, 0, -1, 51],
     '4-0': [472, 82, 0, -1, 44], '4-2': [347, 93, 0, 1, 33], '4-9': [472, 82, 0, -1, 42],
@@ -54,7 +55,9 @@ function teeProgress(value) {
         <path class="diagram-fill" d="M151 28H271V52H223V148H199V52H151Z"/>
         <path class="diagram-dash" d="M151 20H271M281 28V52M292 52V148M151 148H318"/>
         <text x="210" y="16" text-anchor="middle">100 mm</text><text x="288" y="43">20 mm</text><text x="299" y="104">80 mm</text>
-        <text x="211" y="171" text-anchor="middle">y = 0</text>
+        <text x="142" y="43" text-anchor="end">${t('Flange')}</text><text x="190" y="112" text-anchor="end">${t('Web')}</text>
+        <path class="diagram-line" d="M199 157H223M199 154V160M223 154V160"/>
+        <text x="211" y="174" text-anchor="middle">20 mm</text><text x="324" y="152">y = 0</text>
         ${axis === null ? '' : `<path class="centroid-line" d="M95 ${axis}H318"/><circle class="moment-pivot" cx="211" cy="${axis}" r="4"/>
             <text x="101" y="${axis - 6}">ȳ = ${numberText(value)} mm</text>`}`);
 }
@@ -104,6 +107,13 @@ function progressiveLessonDrawing(workshop, run, i) {
         drawing = { ...drawing, markup: beamFigure(beam, reactions, { isolated: true, values, pivot: i < 8 ? 0 : 8 }) };
     }
     if (index === 2 && i === 3) drawing = { ...drawing, markup: horizontalBeam(9, false, false) };
+    if (name === 'triangle-load' && record.status) drawing = workshopFigure(triangleLoadPractice('12 kN/m', true, 6));
+    if (index === 4 && i === 6 && !record.status) drawing = workshopPlot('V');
+    if (index === 10 && name === 'triangle') {
+        const diagonal = i > 2 || (i === 2 && record.status) ? 5 : undefined;
+        const angle = i === 4 && record.status ? 36.9 : undefined;
+        drawing = { ...drawing, markup: rightTrianglePlate({ run: 4, rise: 3, diagonal, angle, unit: 'm' }) };
+    }
     if (index === 6 && name === 'tee') {
         const value = i === 1 ? completedNumber(workshop, run, 1) ?? diagramDraft(record.draft, record.draftLocale).value :
             completedNumber(workshop, run, 1);
@@ -136,7 +146,8 @@ function practiceReactionResultant() {
 
 function lessonValues(workshop, run, i, all) {
     const index = workshops.indexOf(workshop);
-    const entries = Object.entries(lessonSymbols[index] || {}).filter(([step]) => Number(step) <= i)
+    const first = Math.max(0, workshop.turns.findLastIndex((turn, step) => step <= i && turn.newExample));
+    const entries = Object.entries(lessonSymbols[index] || {}).filter(([step]) => Number(step) >= first && Number(step) <= i)
         .filter(([step]) => run.records[step]?.status || Number(step) === i);
     const rows = (all ? entries : entries.filter(([step]) => Number(step) === i)).map(([step, name]) => {
         const turn = workshop.turns[step], record = run.records[step] || {};

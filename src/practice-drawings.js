@@ -18,18 +18,31 @@ const practiceReactionIndex = {
 };
 const practiceVectors = {
     '1-1': [10, 30, 'y'], '1-5': [20, 60, 'x'], '1-7': [125, 30, 'x'], '1-8': [125, 30, 'y'],
-    '1-9': [40, 150, 'x'], 'guided-1-0': [20, 150, 'x'], 'formula-1': [18, 120, 'x'],
-    '1-2': [5, Math.atan2(4, 3) * 180 / Math.PI], '1-3': [13, Math.atan2(12, 5) * 180 / Math.PI, 'y'],
-    '1-10': [100, Math.atan2(80, 60) * 180 / Math.PI], '1-11': [100, Math.atan2(80, 60) * 180 / Math.PI],
+    '1-9': [40, 150, 'x', '−x'], 'guided-1-0': [20, 150, 'x', '−x'], 'formula-1': [18, 120, 'x'],
+};
+const practiceComponentVectors = {
+    '1-2': [3, 4, null, 'resultant'], '1-3': [5, 12, 13, 'vertical'],
+    '1-10': [60, 80, null, 'resultant'], '1-11': [60, 80, null, 'angle'],
+};
+const practiceTriangles = {
+    '10-1': { run: 4, rise: 3 }, '10-2': { run: 8, rise: 6 }, '10-4': { angle: 30 },
+    'formula-10': { run: 15, rise: 8, unit: 'm' }, 'guided-10-0': { run: 12, rise: 5, unit: 'm' },
 };
 const practiceMoments = { '3-0': [6, 2], '3-5': [10, 3] };
 const practiceTrussLoads = { '8-3': 20, '8-4': 20, '8-5': null, '8-6': 20, '9-1': 24 };
-const practiceTopics = ['load-path', 'triangle', 'supports', 'moment-a', 'shear-plot', 'bar', 'tee', 'buckling', 'truss', 'shear-beam', 'triangle'];
+const practiceTrussJoints = {
+    '8-19': 'E', '8-20': 'E', '9-7': 'D', '9-8': 'D', '9-9': 'A', '9-10': 'A', '9-11': 'B',
+    'trusswork-3': 'E', 'trusswork-4': 'E', 'trusswork-5': 'D', 'trusswork-6': 'D',
+    'trusswork-7': 'A', 'trusswork-8': 'A', 'trusswork-9': 'B',
+};
+const practiceTopics = ['load-path', 'triangle', 'pin-roller', 'moment-reference', 'shear-reference', 'bar', 'tee', 'buckling', 'truss', 'reaction-reference', 'triangle'];
+const practiceRoofAreas = { '0-2': [4, '20 m²'], '0-3': [2.5, '16 m²'], '0-8': [6, '5 m × 4 m'] };
+const practiceShearAreas = { '4-10': [8, 2.5], 'formula-4': [-8, 2.5] };
 const methodDrawings = {
-    loadType: 'load-path', loadPath: 'load-path', tributary: 'roof', vibration: 'vibration', weight: 'hanging-weight',
+    loadType: 'load-path', loadPath: 'load-path', tributary: 'roof-strip', vibration: 'vibration', weight: 'hanging-weight',
     units: 'unit-ruler', trig: 'triangle', triangleLength: 'triangle', obliqueTriangle: 'cosine-triangle',
     vector: 'vector-frame', vectorAngle: 'vector-frame', vectorSum: 'vector-frame', forceLine: 'line-of-action',
-    support: 'supports', balance: 'balance-equation', moment: 'moment-reference', reactions: 'reaction-reference',
+    support: 'pin-roller', balance: 'balance-equation', moment: 'moment-reference', reactions: 'reaction-reference',
     distributed: 'load-resultant', shear: 'shear-reference', bendingDiagram: 'moment-reference-plot', simpleBeam: 'moment-reference-plot',
     axialStress: 'bar', strain: 'strain-reference', stressCurve: 'stress-track', stressConcentration: 'stress-notch',
     allowable: 'stress-track', bendingStress: 'bend-reference', bendingSense: 'bend-reference',
@@ -39,12 +52,14 @@ const methodDrawings = {
     angleUnits: 'triangle', isolate: 'balance-equation',
 };
 
-function vectorPlate(F, angle, axis, solution = false, answer) {
+function vectorPlate(F, angle, axis, reference, solution, answer) {
     const radians = angle * Math.PI / 180;
     const x = 229, y = 139;
     const tipX = x + Math.cos(radians) * 118;
     const tipY = y - Math.sin(radians) * 118;
-    const angleLabel = angle > 90 ? 180 - angle : angle;
+    const fromLeft = reference === '−x';
+    const midway = (radians + (fromLeft ? Math.PI : 0)) / 2;
+    const radius = 38;
     const component = axis && { x, y, dx: axis === 'x' ? 1 : 0, dy: axis === 'y' ? -1 : 0,
         name: axis === 'x' ? 'Fₓ' : 'Fᵧ', unit: 'kN', length: 59 };
     return plate(t('Force vector and perpendicular components'), `
@@ -52,8 +67,23 @@ function vectorPlate(F, angle, axis, solution = false, answer) {
         <path class="diagram-dash" d="M${tipX} ${y}V${tipY}H${x}"/>
         <path class="diagram-arrow" d="M${x} ${y}L${tipX} ${tipY}"/>
         <text x="${tipX + (angle > 90 ? -6 : 6)}" y="${tipY - 7}" text-anchor="${angle > 90 ? 'end' : 'start'}">${F == null ? 'F' : `${numberText(F)} kN`}</text>
-        ${angle != null ? `<text x="${x + (angle > 90 ? -52 : 33)}" y="${y - 12}">${numberText(angleLabel)}°</text>` : ''}
+        <path class="diagram-line" d="M${x + (fromLeft ? -radius : radius)} ${y}A${radius} ${radius} 0 0 ${fromLeft ? 1 : 0} ${x + radius * Math.cos(radians)} ${y - radius * Math.sin(radians)}"/>
+        <text x="${x + 58 * Math.cos(midway)}" y="${y - 58 * Math.sin(midway) - 4}" text-anchor="middle">${numberText(fromLeft ? 180 - angle : angle)}°</text>
         ${component ? `<g data-study-force>${forceGlyph(component, solution ? answer : undefined)}</g>` : ''}`);
+}
+
+function componentVectorPlate(horizontal, vertical, magnitude, find, solved = false) {
+    const scale = Math.min(205 / horizontal, 102 / vertical);
+    const x = 115, y = 143, tipX = x + horizontal * scale, tipY = y - vertical * scale;
+    const theta = Math.atan2(vertical, horizontal);
+    return plate(t('Resultant force as a right triangle with horizontal and vertical components'), `
+        <path class="diagram-line" d="M${x} ${y}H${tipX}V${tipY}M${tipX - 10} ${y}v-10h10"/>
+        <path class="diagram-arrow" d="M${x} ${y}L${tipX} ${tipY}"/>
+        <text x="${(x + tipX) / 2}" y="164" text-anchor="middle">${numberText(horizontal)} kN</text>
+        <text x="${tipX + 10}" y="${(y + tipY) / 2}">${find === 'vertical' && !solved ? 'Fᵧ' : `${numberText(vertical)} kN`}</text>
+        <text x="${tipX - 6}" y="${tipY - 8}" text-anchor="end">${magnitude || solved ? `${numberText(magnitude || Math.hypot(horizontal, vertical))} kN` : 'R'}</text>
+        ${find === 'angle' ? `<path class="diagram-line" d="M${x + 35} ${y}A35 35 0 0 0 ${x + 35 * Math.cos(theta)} ${y - 35 * Math.sin(theta)}"/>
+            <text x="${x + 40}" y="${y - 12}">${solved ? `${numberText(theta * 180 / Math.PI)}°` : 'θ'}</text>` : ''}`);
 }
 
 function vectorSketch() {
@@ -61,6 +91,26 @@ function vectorSketch() {
         <path class="diagram-line" d="M98 139H378M139 159V24"/><path class="diagram-arrow" d="M139 139L293 52"/>
         <path class="diagram-dash" d="M139 52H293V139"/><path class="diagram-line" d="M173 139A34 34 0 0 0 168 122"/>
         <text x="307" y="52">F</text><text x="210" y="159">Fₓ</text><text x="112" y="85">Fᵧ</text><text x="176" y="127">θ</text>`);
+}
+
+function roofAreaPlate(pressure, area) {
+    return plate(t('Uniform pressure over a shaded area viewed from above'), `
+        <rect class="roof-deck" x="109" y="41" width="242" height="99"/>
+        <rect class="roof-strip" x="111" y="43" width="238" height="95"/>
+        <text x="230" y="84" text-anchor="middle">${t('Loaded area')} · ${area}</text>
+        <text x="230" y="110" text-anchor="middle">q = ${numberText(pressure)} kN/m²</text>`);
+}
+
+function shearAreaPlate(shear, length) {
+    const axis = 84, y = axis - Math.sign(shear) * 47;
+    return plate(t('Signed rectangular area between the shear line and zero'), `
+        <path class="diagram-line" d="M63 ${axis}H407M90 16V148"/>
+        <rect class="roof-strip" x="90" y="${Math.min(y, axis)}" width="250" height="47"/>
+        <path class="diagram-line" d="M90 ${y}H340"/><path class="diagram-dash" d="M340 ${axis}V${y}"/>
+        <text x="98" y="19">${t('Shear')} V</text><text x="78" y="${axis + 4}">0</text>
+        <text x="215" y="${(axis + y) / 2 + 4}" text-anchor="middle">${numberText(shear)} kN</text>
+        <path class="diagram-line" d="M90 153H340M90 148V158M340 148V158"/>
+        <text x="215" y="171" text-anchor="middle">${numberText(length)} m</text>`);
 }
 
 function leverPlate(force = 'F', distance = 'd', value) {
@@ -83,6 +133,21 @@ function triangularFbd(load, values = false, angle = true) {
         ${forceGlyph({ x: 74, y: 132, dx: 1, dy: 0, name: 'Aₓ', unit: 'kN', labelSide: 'right' }, values ? 0 : undefined)}`);
 }
 
+function lateralReactionPlate(knownRoller, solved) {
+    const left = 132, right = 300, base = 192, top = 54;
+    return plate(t('Truss with a rightward load above the pin and a roller to the right'), `
+        <path class="diagram-line" d="M${left} ${top}H${right}V${base}H${left}ZM${left} ${top}L${right} ${base}"/>
+        <path class="diagram-arrow" d="M57 ${top}H${left - 5}"/><text x="58" y="43">${knownRoller ? 'P' : '72 kN'}</text>
+        <path class="diagram-line" d="M${left} ${base}l-10 15h20ZM${right} ${base}l-10 15h20Z"/>
+        <circle cx="${right - 5}" cy="212" r="3"/><circle cx="${right + 5}" cy="212" r="3"/>
+        <text x="111" y="209">A</text><text x="319" y="210">B</text>
+        ${forceGlyph({ x: left, y: base, dx: 0, dy: -1, name: 'Aᵧ', unit: 'kN', length: 27, labelSide: 'left' }, solved ? -96 : undefined)}
+        ${forceGlyph({ x: left, y: base, dx: 1, dy: 0, name: 'Aₓ', unit: 'kN' }, solved && !knownRoller ? -72 : undefined)}
+        ${forceGlyph({ x: right, y: base, dx: 0, dy: -1, name: 'Bᵧ', unit: 'kN' }, knownRoller || solved ? 96 : undefined)}
+        ${knownRoller ? '' : `<path class="diagram-dash" d="M${left} 232H${right}M${left} 226V238M${right} 226V238M370 ${top}V${base}M363 ${top}H377M363 ${base}H377"/>
+            <text x="216" y="248" text-anchor="middle">6 m</text><text x="380" y="125">8 m</text>`}`, 260);
+}
+
 function horizontalBeam(p, solved, showHorizontal = true) {
     return plate(t('Horizontal applied force and support reactions'), `
         <path class="diagram-line" d="M85 98H384"/><path class="diagram-arrow" d="M223 98H288"/>
@@ -93,8 +158,14 @@ function horizontalBeam(p, solved, showHorizontal = true) {
 }
 
 function conceptPlate(id) {
-    if (workshopDrawings[id]) return workshopDrawings[id]().markup;
     const drawings = {
+        triangle: () => rightTrianglePlate(),
+        'pin-roller': () => beamFigure({ L: 1, a: 0, b: 1, points: [], udls: [] }).replace(/>1 m</g, '>L<'),
+        truss: () => triangularFbd(null, false, false),
+        tee: () => plate(t('T section with the flange above the web'), `
+            <path class="diagram-fill" d="M119 33H332V61H244V151H207V61H119Z"/>
+            <path class="diagram-dash" d="M97 51H349M224 13V166"/>
+            <text x="120" y="26">${t('Flange')}</text><text x="253" y="113">${t('Web')}</text>`),
         'vector-frame': vectorSketch,
         'moment-reference': () => leverPlate(),
         'reaction-reference': () => beamFigure(loadedSpan(1, 'w'), [0, 1, 2], { isolated: true }).replace(/>1 m</g, '>L<'),
@@ -133,12 +204,20 @@ function conceptPlate(id) {
         'moment-reference-plot': () => plate(t('Moment diagram with positive sagging below the axis'), `<path class="diagram-dash" d="M62 71H397"/>
             <path class="diagram-line" d="M77 71Q230 213 382 71"/><text x="52" y="59">M</text><text x="402" y="82">x</text><text x="225" y="159">+M</text>`),
     };
-    return (drawings[id] || vectorSketch)();
+    return drawings[id]?.() || workshopDrawings[id]?.().markup || vectorSketch();
 }
 
 function practiceDrawing(question, solved = false) {
     if (question.type === 'fbd') return fbdDrawing(question, solved ? question.answer : undefined, solved);
     const key = question.key;
+    if (practiceRoofAreas[key]) return roofAreaPlate(...practiceRoofAreas[key]);
+    if (practiceShearAreas[key]) return shearAreaPlate(...practiceShearAreas[key]);
+    if (key === '0-7' || key === 'formula-0') return roofPlan({ width: key === '0-7' ? 4 : 3, floor: key === 'formula-0' }).markup;
+    if (key === 'guided-0-0') return roofPlan({ edge: true, bay: 3, floor: true }).markup;
+    if (key === 'guided-2-1') return workshopDrawings['two-rollers']().markup;
+    if (key === '8-10' || key === '8-11') return lateralReactionPlate(key === '8-11', solved);
+    if (key === '2-6') return fixedDiagram(solved ? [0, 1, 2] : [], solved);
+    if (key === '2-7') return inclinedFbd(solved ? [0, 1, 2] : [], solved, false);
     const beam = question.b || practiceBeams[key];
     if (beam) {
         const { RA, RB } = analyze(beam);
@@ -150,8 +229,16 @@ function practiceDrawing(question, solved = false) {
         return leverPlate(`${force} kN`, `${distance} m`, solved ? -force * distance : undefined);
     }
     if (practiceVectors[key]) {
-        const [force, angle, axis] = practiceVectors[key];
-        return vectorPlate(force, angle, axis, solved, question.answer);
+        const [force, angle, axis, reference] = practiceVectors[key];
+        const answer = solved && question.type === 'formula'
+            ? question.calculate(...question.inputs.map(input => input[3])) : question.answer;
+        return vectorPlate(force, angle, axis, reference, solved, answer);
+    }
+    if (practiceComponentVectors[key]) return componentVectorPlate(...practiceComponentVectors[key], solved);
+    if (practiceTriangles[key]) {
+        const triangle = practiceTriangles[key];
+        const diagonal = solved && ['10-2', 'formula-10'].includes(key) ? Math.hypot(triangle.run, triangle.rise) : undefined;
+        return rightTrianglePlate({ ...triangle, diagonal });
     }
     if (key === '2-10' || key === 'formula-2') return horizontalBeam(key === '2-10' ? 15 : 12, solved);
     if (key === '3-8') return fixedDiagram(solved ? [0, 1, 2, 3] : [3], solved, '15 kN', '4 m', { 0: 0, 1: 15, 2: 60 });
@@ -159,11 +246,13 @@ function practiceDrawing(question, solved = false) {
     if (key === 'formula-3' || key === 'guided-3-0') return triangleLoadPractice(key === 'formula-3' ? '7 kN/m' : '9 kN/m', solved, key === 'formula-3' ? 8 : 6);
     if (Object.hasOwn(practiceTrussLoads, key)) return triangularFbd(practiceTrussLoads[key], solved, key !== '9-1');
     if (question.fig === 'truss') return triangularFbd(40, solved);
-    if (question.fig === 'lateral') return workshopTrussFigure('truss', solved ? { Aₓ: -90, Aᵧ: -180, Bᵧ: 180 } : {}).markup;
+    if (question.fig === 'lateral') {
+        const focus = practiceTrussJoints[key];
+        const values = solved ? { Aₓ: -90, Aᵧ: -180, Bᵧ: 180 } : {};
+        return workshopTrussFigure(focus || solved ? 'truss' : 'truss-reactions', values, focus).markup;
+    }
     if (question.type === 'stress') return solved ? stressFigure() : '';
-    if (question.fig || question.restraints) return figureFor(question);
-    const method = questionMethods.get(key);
-    return conceptPlate(methodDrawings[method] || practiceTopics[question.topicIndex] || 'balance-equation');
+    return question.fig || question.restraints ? figureFor(question) : '';
 }
 
 function triangleLoadPractice(peak, solved, length = 6) {
@@ -175,12 +264,15 @@ function triangleLoadPractice(peak, solved, length = 6) {
 }
 
 function practiceDrawingPanel(question, solved = false) {
-    const markup = practiceDrawing(question, solved);
-    if (!markup) return '';
+    const figure = practiceDrawing(question, solved);
+    if (!figure && question.type === 'stress') return '';
+    const method = questionMethods.get(question.key);
+    const markup = figure || conceptPlate(methodDrawings[method] || practiceTopics[question.topicIndex] || 'balance-equation');
     const exact = question.b || practiceBeams[question.key] || Object.hasOwn(practiceTrussLoads, question.key) ||
-        ['lateral', 'truss'].includes(question.fig) || ['3-8', '2-10', 'formula-2'].includes(question.key);
+        ['lateral', 'truss'].includes(question.fig) || ['3-8', '2-10', 'formula-2', '8-10', '8-11'].includes(question.key);
     return `<figure class="practice-drawing${solved ? ' worked-drawing' : ''}"><figcaption>${exact || question.type === 'fbd' ?
-        (solved ? t('Worked free-body diagram') : t('Free-body diagram')) : (solved ? t('Worked drawing') : t('Problem drawing'))}</figcaption>${markup}</figure>`;
+        (solved ? t('Worked free-body diagram') : t('Free-body diagram')) :
+        figure ? (solved ? t('Worked drawing') : t('Problem drawing')) : t('Concept sketch')}</figcaption>${markup}</figure>`;
 }
 
 function updatePracticeForce(root, question, raw) {

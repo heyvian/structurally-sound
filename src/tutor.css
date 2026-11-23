@@ -342,6 +342,14 @@
 .lesson-values > div { padding: 4px 7px; border: 1px solid #b0bfd6; background: #fcfbf6; min-width: 0; }
 .lesson-values dt { font: 700 12px/1.35 var(--mono); color: var(--blue); }
 .lesson-values dd { margin: 1px 0 0; font: 14px/1.4 var(--mono); overflow-wrap: anywhere; }
+.roof-deck { fill: #e5e9ef; stroke: #66778f; stroke-width: 1; }
+.roof-strip { fill: #a9bde9; }
+.roof-beam { stroke: #26343b; stroke-width: 5; }
+.roof-beam-target { stroke: #1f4292; stroke-width: 8; }
+.plate .roof-target-label { fill: #153674; font-weight: 700; }
+.roof-metre { fill: #fff4a5; fill-opacity: .5; stroke: #553519; stroke-width: 2; }
+.lesson-plot .positive-shear-area { fill: #dfe96d; }
+.truss-workshop .active-truss-joint { fill: #e7eb83; stroke: #2945a7; stroke-width: 2; }
 .lesson-drawing-progress { margin: 8px 0 0; padding: 4px 2px; border-top: 1px solid #9cb0cf; font-size: 13px; }
 .lesson-drawing-progress summary { cursor: pointer; font-weight: 700; }
 .lesson-drawing-progress > .diagram { margin: 5px auto; max-height: 215px; }
@@ -408,6 +416,17 @@
     .lesson-mini-force text { fill: currentColor; font: 12px var(--mono); }
 }
 
+.paper-symbols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    gap: 4px 16px;
+    margin: 8px 0 12px;
+    font-size: .875rem;
+}
+.paper-symbols > div { display: flex; align-items: baseline; gap: 8px; }
+.paper-symbols dd { margin: 0; }
+.paper-symbols var, .formula-output var { color: #182744; font: italic 1.15em "Cambria Math", "Times New Roman", serif; }
+.formula-output var { margin-right: 5px; }
 .math-equation, .math-result { color: #182744; font: 1.18rem/1.35 "Cambria Math", "Times New Roman", serif; }
 .math-equation { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; margin: 8px 0; }
 .math-part { display: inline-flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 2px 5px; }
@@ -430,6 +449,7 @@
 }
 @media print {
     .lesson-paper-work { print-color-adjust: exact; }
+    .lesson-print .paper-symbols { font-size: 9pt; }
     .lesson-print .math-equation, .lesson-print .math-result { font-size: 10pt; }
 }
 

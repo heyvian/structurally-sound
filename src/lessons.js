@@ -9,8 +9,8 @@ const lessonPlans = [
         figure: 'load',
         calculation: {
             prompt: t('Turn floor pressure into a beam load'),
-            setup: t('A floor carries 2.5 kPa. The tributary width of its interior beam is 3 m. Find the load per metre of beam.'),
-            symbol: 'w', expression: 'q × bₜ', unit: 'kN/m',
+            setup: t('The floor pressure is q = 2.5 kPa. The beam carries a strip of floor bₜ = 3 m wide. Multiply pressure by width to find w, the load per metre of beam.'),
+            symbol: 'w', label: t('Load per metre of beam'), expression: 'q × bₜ', unit: 'kN/m',
             inputs: [['q', t('Floor pressure'), 'kPa', 2.5], ['bₜ', t('Tributary width'), 'm', 3]],
             calculate: (q, width) => q * width,
             substitute: (q, width) => `(${q} kN/m²) × (${width} m)`,
@@ -35,7 +35,7 @@ const lessonPlans = [
         ],
         quick: [t('Draw the load path to ground.'), t('Identify point force, line load, or area pressure before converting.'), t('For one-way gravity loading, mark half-bays and multiply pressure × width × length as needed.')],
         pitfalls: [t('Do not use an entire bay on each side of an interior beam.'), t('Convert kilograms to newtons before adding weight to other forces.')],
-        sheet: t('q [kPa = kN/m²] × tributary width [m] = w [kN/m]. Then w × loaded length [m] = W [kN].'),
+        sheet: t('Area pressure q [kPa = kN/m²] × tributary width bₜ [m] = line load w [kN/m]. Then line load w × loaded length [m] = total force W [kN].'),
     },
     {
         goal: t('Draw, resolve, and add 2D forces with the correct signs and angle reference.'),
@@ -43,7 +43,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Find a horizontal force component'),
             setup: t('An 18 kN force acts at 120° counterclockwise from +x. Find its signed horizontal component.'),
-            symbol: 'Fₓ', expression: t('F × cos(θ)'), unit: 'kN',
+            symbol: 'Fₓ', label: t('Signed horizontal force component'), expression: t('F × cos(θ)'), unit: 'kN',
             inputs: [['F', t('Force magnitude'), 'kN', 18], ['θ', t('Angle from +x'), '°', 120]],
             calculate: (force, angle) => force * Math.cos(angle * Math.PI / 180),
             substitute: (force, angle) => t`${force} × cos(${angle}°)`,
@@ -75,7 +75,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Balance a horizontal load'),
             setup: t('A pin at A and a horizontal roller at B support a beam. A 12 kN applied force points right. Take right as positive.'),
-            symbol: 'Aₓ', expression: '−Fₓ', unit: 'kN',
+            symbol: 'Aₓ', label: t('Horizontal reaction at support A'), expression: '−Fₓ', unit: 'kN',
             inputs: [['Fₓ', t('Signed applied horizontal force'), 'kN', 12]],
             calculate: force => -force,
             substitute: force => `−(${force})`,
@@ -110,7 +110,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Replace a triangular load with its resultant'),
             setup: t('A triangular load rises from zero to 7 kN/m across 8 m. Find the magnitude of its equivalent point force.'),
-            symbol: 'R', expression: '½ × wₘₐₓ × L', unit: 'kN',
+            symbol: 'R', label: t('Equivalent point force'), expression: '½ × wₘₐₓ × L', unit: 'kN',
             inputs: [['wₘₐₓ', t('Peak load intensity'), 'kN/m', 7], ['L', t('Loaded length'), 'm', 8]],
             calculate: (intensity, length) => .5 * intensity * length,
             substitute: (intensity, length) => `½ × (${intensity} kN/m) × (${length} m)`,
@@ -142,7 +142,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Find the change in bending moment'),
             setup: t('Shear stays at −8 kN over a 2.5 m segment. Find the signed change in moment from left to right.'),
-            symbol: 'ΔM', expression: 'V × Δx', unit: 'kN·m',
+            symbol: 'ΔM', label: t('Signed change in bending moment'), expression: 'V × Δx', unit: 'kN·m',
             inputs: [['V', t('Signed shear'), 'kN', -8], ['Δx', t('Segment length'), 'm', 2.5]],
             calculate: (shear, length) => shear * length,
             substitute: (shear, length) => `(${shear} kN) × (${length} m)`,
@@ -173,7 +173,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Calculate the stress in a bar'),
             setup: t('A bar with a 200 mm² cross-section carries a 16 kN tensile force. Find its average axial stress.'),
-            symbol: 'σ', expression: 'P ÷ A', unit: 'MPa',
+            symbol: 'σ', label: t('Axial stress'), expression: 'P ÷ A', unit: 'MPa',
             inputs: [['P', t('Tensile force'), 'N', 16000], ['A', t('Cross-sectional area'), 'mm²', 200]],
             calculate: (force, area) => force / area,
             substitute: (force, area) => `(${force} N) ÷ (${area} mm²)`,
@@ -206,7 +206,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Calculate the second moment of area'),
             setup: t('A rectangular section is 60 mm wide and 100 mm deep. Find Iₓ about its horizontal centroidal axis.'),
-            symbol: 'Iₓ', expression: 'b × h³ ÷ 12', unit: 'mm⁴',
+            symbol: 'Iₓ', label: t('Second moment of area about the horizontal centroidal axis'), expression: 'b × h³ ÷ 12', unit: 'mm⁴',
             inputs: [['b', t('Width parallel to the axis'), 'mm', 60], ['h', t('Depth perpendicular to the axis'), 'mm', 100]],
             calculate: (width, depth) => width * depth ** 3 / 12,
             substitute: (width, depth) => `(${width} mm) × (${depth} mm)³ ÷ 12`,
@@ -240,7 +240,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Calculate an Euler buckling load'),
             setup: t('A 3,000 mm pin-ended steel column has E = 200,000 MPa and I = 420,000 mm⁴ about its weak axis. Use the pin–pin effective length factor.'),
-            symbol: 'Pcr', expression: 'π² × E × I ÷ (K × L)²', unit: 'N',
+            symbol: 'Pcr', label: t('Critical buckling load'), expression: 'π² × E × I ÷ (K × L)²', unit: 'N',
             inputs: [['E', t('Elastic modulus'), 'MPa', 200000], ['I', t('Weak-axis second moment of area'), 'mm⁴', 420000],
                 ['K', t('Effective length factor'), '', 1], ['L', t('Unbraced length'), 'mm', 3000]],
             calculate: (modulus, inertia, factor, length) => Math.PI ** 2 * modulus * inertia / (factor * length) ** 2,
@@ -270,7 +270,7 @@ const lessonPlans = [
                 prompt: t('Change the column to fixed–free'),
                 setup: t('The column buckles at 98.70 kN with pin–pin supports. Find its new Euler load when the supports change to fixed–free. E, I and the physical length L stay the same.'),
                 restraints: ['pin-pin', 'fixed-free'],
-                symbol: 'Pnew', expression: t('Pold × (Kold ÷ Knew)²'), unit: 'kN',
+                symbol: 'Pnew', label: t('Critical load with fixed–free ends'), expression: t('Pold × (Kold ÷ Knew)²'), unit: 'kN',
                 inputs: [['Pold', t('Given pin–pin Euler load'), 'kN', 98.70],
                     ['Kold', t('Pin–pin length factor'), '', bucklingCases['pin-pin'].k],
                     ['Knew', t('Fixed–free length factor'), '', bucklingCases['fixed-free'].k]],
@@ -292,7 +292,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Solve for a truss diagonal at the apex'),
             setup: t('A 30 kN load points down at the apex of a symmetric truss. Both diagonals slope at 30° to the horizontal. Take tension as positive.'),
-            symbol: 'F', expression: t('−P ÷ (2 × sin(θ))'), unit: 'kN',
+            symbol: 'F', label: t('Signed force in each diagonal'), expression: t('−P ÷ (2 × sin(θ))'), unit: 'kN',
             inputs: [['P', t('Downward load magnitude'), 'kN', 30], ['θ', t('Diagonal angle from horizontal'), '°', 30]],
             calculate: (load, angle) => -load / (2 * Math.sin(angle * Math.PI / 180)),
             substitute: (load, angle) => t`−${load} ÷ (2 × sin(${angle}°))`,
@@ -324,7 +324,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Turn bending demand into a section requirement'),
             setup: t('The maximum bending moment magnitude is 42 kN·m and allowable bending stress is 140 MPa. Find the required elastic section modulus.'),
-            symbol: 'Sreq', expression: '|M| ÷ fₐ', unit: 'mm³',
+            symbol: 'Sreq', label: t('Required elastic section modulus'), expression: '|M| ÷ fₐ', unit: 'mm³',
             inputs: [['|M|', t('Maximum bending moment magnitude'), 'N·mm', 42000000], ['fₐ', t('Allowable bending stress'), 'MPa', 140]],
             calculate: (moment, stress) => moment / stress,
             substitute: (moment, stress) => `(${moment} N·mm) ÷ (${stress} N/mm²)`,
@@ -355,7 +355,7 @@ const lessonPlans = [
         calculation: {
             prompt: t('Calculate the length of a diagonal'),
             setup: t('A brace rises 8 m over a 15 m horizontal run. Use the two perpendicular legs to find the diagonal length.'),
-            symbol: 'H', expression: '√(a² + b²)', unit: 'm',
+            symbol: 'H', label: t('Length of the diagonal'), expression: '√(a² + b²)', unit: 'm',
             inputs: [['a', t('Horizontal leg'), 'm', 15], ['b', t('Vertical leg'), 'm', 8]],
             calculate: (run, rise) => Math.hypot(run, rise),
             substitute: (run, rise) => `√(${run}² + ${rise}²)`,

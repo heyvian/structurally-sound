@@ -103,19 +103,19 @@ function bucklingComparison() {
 }
 
 let beamFigureNumber = 0;
-function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot, live } = {}) {
+function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot, live, rollerAtA = false } = {}) {
     const { L, a, b, points, udls } = beam;
     const id = `beam-${beamFigureNumber++}`;
     const x = position => 48 + position / L * 424;
     const y = 82;
     const label = [
-        t`Span ${L} metres, pin A at ${a}, roller B at ${b}`,
+        rollerAtA ? t`Span ${L} metres with roller A at ${a} and roller B at ${b}` : t`Span ${L} metres, pin A at ${a}, roller B at ${b}`,
         ...points.map(p => t`${p.p} kilonewtons downward at ${p.x} metres`),
         ...udls.map(w => t`${w.w} kilonewtons per metre downward from ${w.s} to ${w.e} metres`),
     ].join('. ');
     const supports = [a, b].map((position, i) => `
         ${isolated ? `<circle cx="${x(position)}" cy="${y}" r="3" fill="#23343a"/>` : `<path d="M${x(position)} ${y + 1}l-12 17h24Z" fill="#fff9e8" stroke="#23343a" stroke-width="1.6"/>
-        ${i ? [-6, 6].map(offset => `<circle cx="${x(position) + offset}" cy="${y + 23}" r="3"
+        ${i || rollerAtA ? [-6, 6].map(offset => `<circle cx="${x(position) + offset}" cy="${y + 23}" r="3"
                 fill="white" stroke="#23343a"/>`).join('')
             : `<rect x="${x(position) - 14}" y="${y + 18}" width="28" height="7" fill="url(#${id}-ground)"/>`}`}
         <text x="${x(position)}" y="${y + 37}" text-anchor="middle" font-size="11">${'AB'[i]}</text>`).join('');
@@ -181,6 +181,24 @@ function plate(label, drawing, height = 180) {
         <defs><marker id="${arrow}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
             <path d="M0 0L6 3L0 6Z" fill="#a7462e"/>
         </marker></defs><g style="--diagram-arrow:url(#${arrow})">${drawing}</g></svg>`;
+}
+
+function rightTrianglePlate({ run, rise, diagonal, unit = '', angle } = {}) {
+    const side = (name, length) => length == null ? name : `${name} · ${numberText(length)}${unit ? ` ${unit}` : ''}`;
+    const left = 140, base = 145;
+    const width = run ?? 4;
+    const height = rise ?? (angle ? width * Math.tan(angle * Math.PI / 180) : 3);
+    const scale = Math.min(180 / width, 135 / height);
+    const right = left + width * scale;
+    const top = base - height * scale;
+    const theta = Math.atan2(height, width);
+    return plate(t('Right triangle with the horizontal, vertical, and diagonal sides labeled'), `
+        <path class="diagram-fill" d="M${left} ${base}H${right}V${top}Z"/>
+        <path class="diagram-line" d="M${right - 13} ${base}v-13h13M${left + 34} ${base}A34 34 0 0 0 ${left + 34 * Math.cos(theta)} ${base - 34 * Math.sin(theta)}"/>
+        <text x="${left + 42}" y="${base - 6}">${angle ? `${numberText(angle)}°` : 'θ'}</text>
+        <text x="${(left + right) / 2}" y="165" text-anchor="middle">${side(t('adjacent'), run)}</text>
+        <text x="${right + 8}" y="${(top + base) / 2}">${side(t('opposite'), rise)}</text>
+        <text x="${(left + right) / 2 - 10}" y="${(top + base) / 2 - 18}" text-anchor="end">${side(t('hypotenuse'), diagonal)}</text>`);
 }
 
 const plates = {

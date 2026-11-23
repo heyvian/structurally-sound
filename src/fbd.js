@@ -53,7 +53,7 @@ function fixedDiagram(shown, isolated, load = 'P', length = 'L', values = {}) {
         forceGlyph({ x: 97, y: 96, dx: 0, dy: -1, name: 'Aᵧ' }, values[1]), momentGlyph(97, 96, 'Mₐ', values[2]),
         `<path class="diagram-arrow" d="M361 30V90"/><text x="370" y="35">${load}</text>`,
         `<path class="diagram-arrow" d="M361 139V101"/><text x="374" y="136">${load}</text>`];
-    return plate(t('Cantilever and applied tip force'), `
+    return plate(shown.includes(3) || shown.includes(4) ? t('Cantilever and applied tip force') : t('Cantilever fixed at A'), `
         <path class="diagram-line" d="M97 96H361"/>
         ${isolated ? '<circle cx="97" cy="96" r="4"/>' : '<path class="diagram-line" d="M97 58V130M86 64l11-7m-11 20 11-7m-11 20 11-7m-11 20 11-7m-11 20 11-7m-11 20 11-7"/>'}
         ${shown.map(i => arrows[i]).join('')}
@@ -61,7 +61,7 @@ function fixedDiagram(shown, isolated, load = 'P', length = 'L', values = {}) {
         <text x="97" y="126" text-anchor="middle">A</text>`);
 }
 
-function inclinedFbd(shown, isolated) {
+function inclinedFbd(shown, isolated, loaded = true) {
     const arrows = [forceGlyph({ x: 88, y: 91, dx: 1, dy: 0, name: 'Aₓ' }),
         forceGlyph({ x: 88, y: 91, dx: 0, dy: -1, name: 'Aᵧ' }),
         forceGlyph({ x: 359, y: 91, dx: -.6, dy: -.8, name: 'B' }),
@@ -70,7 +70,7 @@ function inclinedFbd(shown, isolated) {
         <path class="diagram-line" d="M88 91H359"/>
         ${isolated ? '<circle cx="88" cy="91" r="4"/><circle cx="359" cy="91" r="4"/>' :
             '<path class="diagram-fill" d="M88 91l-14 18h28zM359 91l-18 24 31-16z"/><path class="diagram-line" d="M315 135L397 86"/><circle cx="354" cy="111" r="4"/><circle cx="368" cy="103" r="4"/>'}
-        <path class="diagram-arrow" d="M228 28V85"/><text x="234" y="35">P</text>${shown.map(i => arrows[i]).join('')}
+        ${loaded ? '<path class="diagram-arrow" d="M228 28V85"/><text x="234" y="35">P</text>' : ''}${shown.map(i => arrows[i]).join('')}
         <text x="88" y="134" text-anchor="middle">A</text><text x="359" y="142" text-anchor="middle">B</text>`);
 }
 

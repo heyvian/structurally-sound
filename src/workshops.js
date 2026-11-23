@@ -24,14 +24,14 @@ const workshopTruss = {
 };
 
 const roofLineLoad = {
-    symbol: 'w', expression: 'q × bₜ', unit: 'kN/m',
+    symbol: 'w', label: t('Load per metre of beam'), expression: 'q × bₜ', unit: 'kN/m',
     inputs: [['q', t('Roof pressure'), 'kPa', 3], ['bₜ', t('Tributary width'), 'm', 4]],
     calculate: (q, width) => q * width,
     substitute: (q, width) => `(${q} kN/m²) × (${width} m)`,
     paper: { numerator: [0, '×', 1] },
 };
 const eulerCalculation = {
-    symbol: 'Pcr', expression: 'π²EI/(KL)²', unit: 'kN',
+    symbol: 'Pcr', label: t('Critical buckling load'), expression: 'π²EI/(KL)²', unit: 'kN',
     inputs: [['E', t('Elastic modulus'), 'N/mm²', 200000], ['I', t('Second moment of area'), 'mm⁴', 800000],
         ['K', t('End restraint factor'), '', 1], ['L', t('Physical unbraced length'), 'mm', 4000]],
     calculate: (elasticity, inertia, k, length) => Math.PI ** 2 * elasticity * inertia / (k * length) ** 2 / 1000,
@@ -63,19 +63,19 @@ const workshops = [
                 ['pressure', t('Pressure pushing inward'), t('The prompt describes a pull away from the surface.')],
                 ['suction', t('Suction')],
             ], 'suction', t('Outward wind action is suction. It needs a lateral load path through suitable connections and bracing.')),
-            num(t('The drawing is now a roof strip. The beam receives half the distance to the next beam on each side. The adjacent beams are 4 m away on both sides.'), t('How wide is the strip that this interior beam supports?'), 4, 'm',
-                t('Half of 4 m is 2 m on each side. The total tributary width is 2 + 2 = 4 m.'), { drawing: 'roof', wrong: [[8, t('8 m counts the full bay on both sides. Each neighboring beam shares the load.')]], hint: t('Add two half-bays.') }),
-            num(t('The roof pressure is 3 kPa. One kPa is one kN per square metre. For a single metre along the beam, we carry a strip 4 m wide and 1 m long.'), t('Find the load per metre along the beam.'), 12, 'kN/m',
-                t('Multiply 3 kN/m² × 4 m = 12 kN/m. The unit of width cancels one of the two metres in the pressure.'), { drawing: 'roof', calculation: roofLineLoad, hint: t('To get kN/m, cancel only one metre in kN/m².'), units: t('kPa = kN/m². Multiply by width in m to get kN/m, then by span in m to get kN.') }),
+            num(t('Look down on the roof from above. A beam is a long member under the roof that carries its weight. Find the highlighted middle beam and the next beam on each side. Each gap is 4 m. The two beams on either side of a gap share the roof across it, so each beam carries up to the dashed halfway line.'), t('How wide is the shaded roof strip carried by the middle beam?'), 4, 'm',
+                t('Half of each 4 m gap is 2 m. Add the 2 m on either side of the middle beam. Its tributary width bₜ is 2 m + 2 m = 4 m.'), { drawing: 'roof', wrong: [[8, t('8 m counts the full bay on both sides. Each neighboring beam shares the load.')]], hint: t('Add two half-bays.') }),
+            num(t('We write the roof pressure as q = 3 kPa. Each square metre of roof puts 3 kN of load on the framing. The tributary width bₜ is the width of roof this beam carries. We found bₜ = 4 m in the last step. Each metre of beam carries a 4 m × 1 m strip, so multiply the pressure by the 4 m width to find w, the load per metre of beam.'), t('Find the load per metre along the beam.'), 12, 'kN/m',
+                t('Multiply 3 kN/m² × 4 m = 12 kN/m. The unit of width cancels one of the two metres in the pressure.'), { drawing: 'roof-line-load', calculation: roofLineLoad, hint: t('To get kN/m, cancel only one metre in kN/m².'), units: t('1 kPa = 1 kN/m². Multiplying kN/m² by m leaves kN/m.') }),
             num(t('The beam is 6 m long, and every metre carries 12 kN. We can now add up the six metres.'), t('How much total roof force does the beam carry?'), 72, 'kN',
                 t('12 kN/m × 6 m = 72 kN. Equivalently, 3 kN/m² × 4 m × 6 m = 72 kN.'), { drawing: 'roof', wrong: [[12, t('That is the line load, in kN for each metre. Multiply by the 6 m loaded length for the total.')]] }),
-            num(t('Check a different geometry. At the edge of the same roof, the adjacent beam is 4 m away on one side, with no roof beyond the edge. The pressure and span are the same.'), t('Find the total force on the edge beam.'), 36, 'kN',
-                t('The edge strip is 4/2 = 2 m wide. The total is 3 × 2 × 6 = 36 kN, half the load on the interior beam.'), { drawing: 'roof', hint: t('This beam only gets one half-bay.') }),
+            num(t('Find the highlighted edge beam in the new roof plan. The roof stops at that beam. The next beam is 4 m in toward the roof, so the shaded strip goes only from the edge beam to the dashed halfway line. Use the strip width, the 6 m beam length, and the same roof pressure of 3 kPa.'), t('Find the total force on the edge beam.'), 36, 'kN',
+                t('The strip is 4 m ÷ 2 = 2 m wide and 6 m long, so it covers 12 m². Multiply 3 kN/m² × 12 m² = 36 kN. That is half the load on the middle beam.'), { drawing: 'roof-edge', newExample: true, hint: t('Take half the 4 m gap to get the strip width. Multiply width by length for area, then multiply by the pressure.') }),
             num(t('A rooftop unit has a mass of 400 kg. Mass tells us how much matter it contains. Weight is the force of gravity on it. Take g = 9.81 N/kg, so each kilogram contributes 9.81 N of weight.'), t('How much weight does the unit add, in kN?'), 3.924, 'kN',
-                t('400 kg × 9.81 N/kg = 3,924 N = 3.924 kN downward. Use kN when adding it to the other gravity forces.'), { units: t('kg × N/kg = N. Divide by 1,000 N/kN to report kN.'), wrong: [[400,t('400 is the mass in kg. Convert to a gravity force before reporting kN.')]] }),
+                t('400 kg × 9.81 N/kg = 3,924 N = 3.924 kN downward. Use kN when adding it to the other gravity forces.'), { drawing: 'hanging-weight', newExample: true, units: t('kg × N/kg = N. Divide by 1,000 N/kN to report kN.'), wrong: [[400,t('400 is the mass in kg. Convert to a gravity force before reporting kN.')]] }),
             pick(t('An earthquake shakes the ground and the building resists the change in motion. A structure has a natural frequency, measured in cycles per second. Its period is the time for one cycle. Shaking near that frequency can build up motion like pushing a swing at the right time.'), t('Which forcing frequency is most likely to amplify motion if the building’s natural frequency is 2 Hz?'), [
                 ['near', t('About 2 Hz')], ['fast', t('About 20 Hz'), t('The frequency here is ten times the natural frequency. In this example look for a close match.')],
-            ], 'near', t('The close match can cause resonance. At 2 cycles per second, the period is 1 ÷ 2 = 0.5 seconds per cycle.'), { units: t('1 Hz = 1 cycle per second. The inverse frequency gives seconds per cycle.') }),
+            ], 'near', t('The close match can cause resonance. At 2 cycles per second, the period is 1 ÷ 2 = 0.5 seconds per cycle.'), { drawing: 'vibration', newExample: true, units: t('1 Hz = 1 cycle per second. The inverse frequency gives seconds per cycle.') }),
         ],
     },
     {
@@ -97,16 +97,16 @@ const workshops = [
             num(t('The vertical leg is opposite the 30° angle, and sin 30° = 0.5. The arrow points upward, so its vertical component is positive.'), t('Compute the signed vertical component.'), 5, 'kN',
                 t('Fᵧ = +10 sin 30° = +5 kN. Both components together describe the original 10 kN arrow.')),
             num(t('Now add a second cable pulling straight left with 3 kN. We already found the first cable pulls +8.66 kN to the right. Let left be negative.'), t('What is the new horizontal total Rₓ?'), 10 * Math.cos(Math.PI / 6) - 3, 'kN',
-                t('Rₓ = 8.66 − 3 = +5.66 kN. Rᵧ stays +5 kN because the second cable has no vertical component.'), { wrong: [[11.66, t('Add the leftward 3 kN with a negative sign. Its direction partly cancels the first pull.')]] }),
+                t('Rₓ = 8.66 − 3 = +5.66 kN. Rᵧ stays +5 kN because the second cable has no vertical component.'), { drawing: 'vector-sum', wrong: [[11.66, t('Add the leftward 3 kN with a negative sign. Its direction partly cancels the first pull.')]] }),
             num(t('To turn those two totals into one arrow, treat 5.66 and 5 as the legs of a right triangle. The length of the diagonal is √(Rₓ² + Rᵧ²).'), t('Find the magnitude of the combined pull.'), Math.hypot(10 * Math.cos(Math.PI / 6) - 3, 5), 'kN',
-                t('√(5.66² + 5²) ≈ 7.55 kN. It is smaller than the first 10 kN pull because the second pull partly cancels the horizontal component.'), { refs: ['trig'], hint: t('Square each component, add the squares, then take the square root.') }),
+                t('√(5.66² + 5²) ≈ 7.55 kN. It is smaller than the first 10 kN pull because the second pull partly cancels the horizontal component.'), { drawing: 'vector-resultant', refs: ['trig'], hint: t('Square each component, add the squares, then take the square root.') }),
             pick(t('To find the new direction above +x, you know the two legs, 5.00 kN up and 5.66 kN right. You want the angle measured from horizontal.'), t('Which ratio directly compares those two known legs?'), [
                 ['tan', t('Tangent · 5.00/5.66')], ['sin', t('Sine · 5.00/5.66'), t('Sine needs the diagonal as the denominator. 5.66 is the horizontal leg.')],
                 ['cos', t('Cosine · 5.66/5.00'), t('Cosine needs the diagonal as the denominator. These two numbers are both legs.')],
-            ], 'tan', t('Use inverse tangent in degree mode. tan⁻¹(5.00/5.66) ≈ 41.5°. The two positive components put it in the upper-right quadrant.'), { skill: 'trig' }),
+            ], 'tan', t('Use inverse tangent in degree mode. tan⁻¹(5.00/5.66) ≈ 41.5°. The two positive components put it in the upper-right quadrant.'), { drawing: 'vector-resultant', skill: 'trig' }),
             pick(t('A triangle drawn by placing force arrows head to tail might have a corner other than 90°. If you know two sides a and b and the angle C between them, you can find the third side c with a relation that accounts for that angle.'), t('What relation works when the included angle is 120°?'), [
                 ['cosine', t('Cosine law · c² = a² + b² − 2ab cos C')], ['right', t('Pythagoras · c² = a² + b²'), t('That formula applies when the sides meet at 90°. At 120° the extra term is needed.')],
-            ], 'cosine', t('Use the angle inside the head-to-tail triangle. After finding the third side, you can use the sine law by matching each side with the angle opposite it.')),
+            ], 'cosine', t('Use the angle inside the head-to-tail triangle. After finding the third side, you can use the sine law by matching each side with the angle opposite it.'), { drawing: 'oblique-vector', newExample: true }),
         ],
     },
     {
@@ -124,13 +124,13 @@ const workshops = [
             pick(t('Suppose we replace the pin by a built-in end. It can stop the beam from shifting in two directions and also keep its end from turning.'), t('Which reactions should a fixed end have in this plane?'), [
                 ['three', t('Two force components and a moment')], ['two', t('Two force components'), t('Those two are enough for a pin. The fixed end also restrains rotation.')],
                 ['one', t('One vertical force'), t('That is a horizontal roller. A fixed end restrains three planar motions.')],
-            ], 'three', t('The fixed end reacts with a horizontal force, a vertical force, and a moment.')),
+            ], 'three', t('The fixed end reacts with a horizontal force, a vertical force, and a moment.'), { drawing: 'fixed-support' }),
             num(t('Return to our pin and roller. A 9 kN horizontal push acts to the right. B cannot supply a horizontal force, so only the pin can cancel it. Right is positive.'), t('What signed force is Aₓ?'), -9, 'kN',
                 t('ΣFₓ = 0 gives Aₓ + 9 = 0, so Aₓ = −9 kN. The minus sign tells us the force points left.'), { drawing: 'support-arrows', units: t('Aₓ and the applied push are both forces in kN and can be added directly.'), wrong: [[9, t('That magnitude is right. Two rightward forces would add. The pin must push left.')]] }),
             pick(t('Now imagine making both ends rollers on level ground. The two upward arrows can balance weight, but check each possible rigid motion separately.'), t('What motion is left unrestrained?'), [
                 ['slide', t('Sliding sideways')], ['lift', t('Moving vertically downward through the ground'), t('The rollers resist motion normal to the ground.')],
                 ['none', t('The beam cannot move'), t('Both reactions are parallel. Neither opposes sideways motion.')],
-            ], 'slide', t('Horizontal sliding is still possible. Count independent directions of restraint, rather than the number of supports alone.')),
+            ], 'slide', t('Horizontal sliding is still possible. Count independent directions of restraint, rather than the number of supports alone.'), { drawing: 'two-rollers' }),
         ],
     },
     {
@@ -162,7 +162,7 @@ const workshops = [
                 ['ok', '−26×8 + 24×6 + 32×2 = 0'], ['bad', '26×8 + 24×6 + 32×2 = 0', t('Aᵧ acts upward to the left of B, giving a clockwise or negative moment.')],
             ], 'ok', t('−208 + 144 + 64 = 0. You can also start at B to eliminate Bᵧ, solve for Aᵧ first, and use ΣFᵧ for Bᵧ. Both routes give the same reactions.'), { drawing: 'reaction-resultant', skill: 'reactions' }),
             num(t('A triangular load uses a different centre. Its equivalent force lies one-third of the loaded span from the heavy end. A triangle with a 12 kN/m peak over 6 m has area ½ × 12 × 6 = 36 kN.'), t('How far from the heavy end does the 36 kN resultant act?'), 2, 'm',
-                t('6/3 = 2 m from the heavy end. A uniform patch would have its resultant at the midpoint instead.'), { drawing: 'triangle-load', wrong: [[4, t('4 m is measured from the light end. This question measures from the heavy end.')]] }),
+                t('6/3 = 2 m from the heavy end. A uniform patch would have its resultant at the midpoint instead.'), { drawing: 'triangle-load', newExample: true, wrong: [[4, t('4 m is measured from the light end. This question measures from the heavy end.')]] }),
         ],
     },
     {
@@ -187,7 +187,7 @@ const workshops = [
                 ['right', t('Support B at x = 8 m'), t('The negative shear after midspan has already reduced the moment back to zero at B.')],
             ], 'middle', t('At x = 4 m, 24 − 6x = 0. Moment changes from growing to falling there.'), { drawing: 'shear-plot', hot: ['left','middle','right'] }),
             num(t('At A, M starts at zero. The positive shear from A to midspan is a triangle with base 4 m and height 24 kN. Its signed area is the increase in moment.'), t('Find the moment at midspan.'), 48, 'kN·m',
-                t('½ × 4 m × 24 kN = +48 kN·m. You can also use wL²/8 = 6×8²/8 = 48 for this particular simple-span UDL.'), { drawing: 'shear-plot', units: t('The graph’s width is in m and its height is in kN. Graph area is m × kN = kN·m.'), wrong: [[96, t('96 kN·m is the full rectangle. The shear falls to zero, so the area is only half that.')]] }),
+                t('½ × 4 m × 24 kN = +48 kN·m. You can also use wL²/8 = 6×8²/8 = 48 for this particular simple-span UDL.'), { drawing: 'positive-shear', units: t('The graph’s width is in m and its height is in kN. Graph area is m × kN = kN·m.'), wrong: [[96, t('96 kN·m is the full rectangle. The shear falls to zero, so the area is only half that.')]] }),
             pick(t('The shear line slopes down uniformly, so moment changes quickly at first, then more slowly, with zero slope at midspan. On our course drawings positive sagging is drawn below the datum.'), t('What should the moment diagram look like?'), [
                 ['curve', t('A smooth parabola below the datum')], ['flat', t('A flat line below the datum'), t('Moment changes anywhere V is nonzero. A constant moment would need zero shear throughout.')],
                 ['triangle', t('Two straight lines meeting at the middle'), t('That comes from constant shear on each half. Here V varies linearly along the span.')],
@@ -197,10 +197,10 @@ const workshops = [
                 { hint: t('Use M = 0 at the supports and +48 at the middle. The curve bows toward positive M.') }),
             pick(t('Try a different load. A downward point force in the middle of a simple beam produces a jump in V. On either side of that load there is no distributed load.'), t('What happens to M at the point force?'), [
                 ['bend', t('The slope changes, and M stays continuous')], ['jump', t('M jumps by the size of the force'), t('Force has units of kN, while moment has units of kN·m. A concentrated couple can jump M.')],
-            ], 'bend', t('The shear jumps, so the slope of M changes abruptly. The moment itself stays continuous unless there is an applied couple.'), { drawing: 'point-beam' }),
+            ], 'bend', t('The shear jumps, so the slope of M changes abruptly. The moment itself stays continuous unless there is an applied couple.'), { drawing: 'point-beam', newExample: true }),
             num(t('Time to draw a fresh beam. It spans 6 m. A 12 kN point load acts 2 m from A, so the reactions are unequal. Take moments about A first.'), t('What is Bᵧ?'), 4, 'kN',
                 t('Bᵧ × 6 m = 12 kN × 2 m, so Bᵧ = 4 kN. Force balance gives Aᵧ = 12 − 4 = 8 kN.'),
-                { drawing: 'sketch-beam', skill: 'reactions', hint: t('Divide the load moment about A by the span to get Bᵧ.') }),
+                { drawing: 'sketch-beam', newExample: true, skill: 'reactions', hint: t('Divide the load moment about A by the span to get Bᵧ.') }),
             sketch(sketchBeam, 'V', t('Sketch the shear on your own. Work left to right. There are three places where a concentrated force changes the shear. Between those locations the beam has no distributed loading.'),
                 t('V jumps by +8 kN at A, by −12 kN at x = 2 m, and by +4 kN at B. The span values are +8 kN and −4 kN, with horizontal lines between the jumps.'),
                 { drawing: 'sketch-beam', hint: t('Start at zero. Add the signed force at each station and carry that result to the next one.') }),
@@ -289,7 +289,7 @@ const workshops = [
             num(t('Slenderness compares effective column length to that cross-sectional spread. On the pinned column, KL = 4,000 mm and r = 20 mm about the weak axis. Larger KL/r makes buckling more important.'), t('What is KL/r?'), 200, '',
                 t('4,000/20 = 200. This ratio has no units. Check both axes if the section or bracing differs by direction.'), { units: t('mm ÷ mm cancels. Use the same length units in both places.') }),
             num(t('Buckling is a stability check. Deflection is movement under an applied load. For a 2,000 mm cantilever with a 3,000 N tip load, E = 200,000 N/mm² and I = 6×10⁶ mm⁴, use δ = PL³/(3EI).'), t('Find the elastic tip deflection.'), 3000*2000**3/(3*200000*6e6), 'mm',
-                t('δ = 3000×2000³/(3×200,000×6×10⁶) ≈ 6.67 mm. Here the physical length is cubed in the numerator.'), { drawing: 'cantilever', refs: ['powers','units'], units: t('(N × mm³) ÷ (N/mm² × mm⁴) = mm. Deflection is a distance.'), hint: t('Calculate L³ separately before substituting. The result is already in millimetres.') }),
+                t('δ = 3000×2000³/(3×200,000×6×10⁶) ≈ 6.67 mm. Here the physical length is cubed in the numerator.'), { drawing: 'cantilever', newExample: true, refs: ['powers','units'], units: t('(N × mm³) ÷ (N/mm² × mm⁴) = mm. Deflection is a distance.'), hint: t('Calculate L³ separately before substituting. The result is already in millimetres.') }),
         ],
     },
     {
@@ -356,7 +356,7 @@ const workshops = [
                 ['middle','Midspan'], ['right',t('Support B'),t('The signed positive and negative shear areas have cancelled by this point.')],
             ], 'middle', t('At midspan, the shear is 24 − 6×4 = 0, so this is the peak.'), { drawing: 'shear-plot', hot: ['left','middle','right'] }),
             num(t('From A to midspan the positive shear area is a triangle of base 4 m and height 24 kN. Starting from zero moment, its area gives the peak.'), t('Find Mmax.'), 48, 'kN·m',
-                t('½×4×24 = 48 kN·m. Plot the positive sagging peak below the datum as in the course diagrams.'), { drawing: 'moment-plot' }),
+                t('½×4×24 = 48 kN·m. Plot the positive sagging peak below the datum as in the course diagrams.'), { drawing: 'positive-shear' }),
             num(t('We want the peak bending stress to stay at or below 150 MPa. MPa means N/mm². To use Sreq = Mmax/σallow we first convert 48 kN·m to 48,000,000 N·mm.'), t('Find the required section modulus in mm³.'), 320000, 'mm³',
                 t('48,000,000 ÷ 150 = 320,000 mm³. On a table in 10³ mm³, compare against 320.'), { drawing: 'moment-plot', units: t('Multiply kN·m by 1,000 N/kN and 1,000 mm/m. Then (N·mm) ÷ (N/mm²) = mm³.'), wrong: [[320, t('320 is the value in thousands of mm³. This entry asks for mm³.')]] }),
             pick(t('Use the listed nominal masses and compare Sₓ with the threshold of 320 in the table’s displayed units.'), t('Which is the lightest listed section that passes?'), [
@@ -386,7 +386,7 @@ const workshops = [
             num(t('Tangent takes an angle and returns a ratio. Inverse tangent goes the other way. On a calculator in degree mode, use tan⁻¹(0.75), also written arctan(0.75).'), t('Find θ to the nearest tenth of a degree.'), Math.atan(3/4)*180/Math.PI, '°',
                 t('θ ≈ 36.87°, or 36.9°. Because the rise is smaller than the run, a tilt less than 45° makes sense.'), { tolerance: .1, wrong: [[.644,t('That is the same angle in radians. Use degree mode to answer in degrees.')]] }),
             num(t('One last tool before forces. An equation is like a balanced scale. If 3x + 4 = 19, subtract 4 from both sides first. That leaves 3x = 15. Then undo multiplication.'), t('What is x?'), 5, '',
-                t('Divide both sides by 3. x = 5, and 3×5 + 4 = 19 checks it.'), { drawing: 'balance-equation', wrong: [[15,t('15 is the value of 3x. Divide by 3 to find a single x.')]] }),
+                t('Divide both sides by 3. x = 5, and 3×5 + 4 = 19 checks it.'), { drawing: 'balance-equation', newExample: true, wrong: [[15,t('15 is the value of 3x. Divide by 3 to find a single x.')]] }),
         ],
     },
 ];
@@ -502,29 +502,29 @@ workshops[2].turns.push({ ...fbdQuestion('cantilever'),
 });
 
 // The first numerical use of each method includes a guided substitution.
-workshops[1].turns[2].calculation = paperCalculation('Fₓ', 'kN',
+workshops[1].turns[2].calculation = paperCalculation('Fₓ', t('Signed horizontal force component'), 'kN',
     [['F', t('Force magnitude'), 'kN', 10], ['θ', t('Angle from +x'), '°', 30]],
     [0, '× cos(', 1, ')'], null, (force, angle) => force * Math.cos(angle * Math.PI / 180));
-workshops[3].turns[3].calculation = paperCalculation('Mₐ', 'kN·m',
+workshops[3].turns[3].calculation = paperCalculation('Mₐ', t('Moment about support A'), 'kN·m',
     [['Fᵧ', t('Signed vertical force'), 'kN', -24], ['d', t('Perpendicular lever arm'), 'm', 2]],
     [0, '×', 1], null, (force, arm) => force * arm);
-workshops[3].turns[6].calculation = paperCalculation('Bᵧ', 'kN',
+workshops[3].turns[6].calculation = paperCalculation('Bᵧ', t('Vertical reaction at support B'), 'kN',
     [['|M₁|', t('Moment magnitude from the point load'), 'kN·m', 48], ['|M₂|', t('Moment magnitude from the distributed load'), 'kN·m', 192],
         ['L', t('Span between supports'), 'm', 8]],
     [0, '+', 1], [2], (first, second, length) => (first + second) / length);
-workshops[4].turns[5].calculation = paperCalculation('M(4)', 'kN·m',
+workshops[4].turns[5].calculation = paperCalculation('M(4)', t('Bending moment at x = 4 m'), 'kN·m',
     [['Δx', t('Base of the shear triangle'), 'm', 4], ['V₀', t('Height of the shear triangle'), 'kN', 24]],
     ['½ ×', 0, '×', 1], null, (base, height) => .5 * base * height);
-workshops[5].turns[1].calculation = paperCalculation('σ', 'MPa',
+workshops[5].turns[1].calculation = paperCalculation('σ', t('Axial stress'), 'MPa',
     [['F', t('Axial force in newtons'), 'N', 24000], ['A', t('Cross-sectional area'), 'mm²', 150]],
     [0], [1], (force, area) => force / area);
-workshops[6].turns[2].calculation = paperCalculation('Iweb', 'mm⁴',
+workshops[6].turns[2].calculation = paperCalculation('Iweb', t('Second moment of area of the web about its own horizontal centreline'), 'mm⁴',
     [['b', t('Width of the web'), 'mm', 20], ['h', t('Depth of the web'), 'mm', 80]],
     [0, '× (', 1, ')³'], ['12'], (width, depth) => width * depth ** 3 / 12);
-workshops[8].turns[6].calculation = paperCalculation('ED', 'kN',
+workshops[8].turns[6].calculation = paperCalculation('ED', t('Signed force in truss member ED'), 'kN',
     [['P', t('Rightward load at E'), 'kN', 90], ['θ', t('Angle from horizontal'), '°', 45]],
     ['−', 0], ['cos(', 1, ')'], (load, angle) => -load / Math.cos(angle * Math.PI / 180));
-workshops[10].turns[2].calculation = paperCalculation('L', 'm',
+workshops[10].turns[2].calculation = paperCalculation('L', t('Length of the diagonal'), 'm',
     [['b', t('Horizontal run'), 'm', 4], ['h', t('Vertical rise'), 'm', 3]],
     ['√((', 0, ')² + (', 1, ')²)'], null, Math.hypot);
 

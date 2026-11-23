@@ -10,6 +10,36 @@ function workshopBeam(beam, reactions = []) {
     });
 }
 
+function roofPlan({ edge = false, floor = false, bay, length, width, oneMetre = false } = {}) {
+    const top = edge ? 114 : 54;
+    const neighbors = edge ? [174] : [54, 174];
+    const midlines = edge ? [144] : [84, 144];
+    const target = edge ? t('Edge beam') : t('Middle beam');
+    const description = floor ? t('Floor plan viewed from above, with the strip carried by the highlighted beam.') : edge
+        ? t('Roof plan viewed from above. The edge beam carries the strip up to the dashed line halfway to the next beam.')
+        : t('Roof plan viewed from above. The middle beam carries the roof up to the dashed line halfway to the next beam on each side.');
+    return workshopFigure(plate(description, `
+        <rect class="roof-deck" x="104" y="${top}" width="280" height="${174 - top}"/>
+        <rect class="roof-strip" x="104" y="${edge ? 114 : 84}" width="280" height="${edge ? 30 : 60}"/>
+        ${midlines.map(y => `<path class="diagram-dash" d="M104 ${y}H384"/>`).join('')}
+        ${neighbors.map(y => `<path class="roof-beam" d="M104 ${y}H384"/>
+            <text x="116" y="${y - 9}">${t('Next beam')}</text>`).join('')}
+        <path class="roof-beam roof-beam-target" d="M104 114H384"/>
+        <text class="roof-target-label" x="116" y="105">${target}</text>
+        ${edge ? `<text x="244" y="70" text-anchor="middle">${floor ? t('No floor beyond this edge') : t('No roof beyond this edge')}</text>` : ''}
+        ${oneMetre ? `<rect class="roof-metre" x="310" y="84" width="${280 / length}" height="60"/>
+            <path class="diagram-line" d="M310 156H${310 + 280 / length}m0-5v10M310 151v10"/>
+            <text x="${310 + 140 / length}" y="172" text-anchor="middle">1 m</text>` : ''}
+        ${bay ? `<path class="diagram-line" d="M72 ${top}V174M67 114H77M67 174H77${edge ? '' : 'M67 54H77'}"/>
+            <text x="63" y="149" text-anchor="end">${numberText(bay)} m</text>
+            ${edge ? '' : `<text x="63" y="89" text-anchor="end">${numberText(bay)} m</text>`}` : ''}
+        ${width ? `<text x="244" y="136" text-anchor="middle">bₜ = ${numberText(width)} m</text>` : ''}
+        ${length ? `<path class="diagram-line" d="M104 197H384M104 192V202M384 192V202"/>
+            <text x="244" y="218" text-anchor="middle">${t('Beam length')} · ${numberText(length)} m</text>` : ''}`, length ? 230 : 190), {},
+    oneMetre ? t('The outlined slice shows how much roof one metre of beam carries. The dashed lines mark the edges of the shaded roof strip.') :
+        t('The thick lines are beams under the roof. The shaded strip is the roof area carried by the highlighted beam. The dashed lines mark where that area ends between beams.'));
+}
+
 function momentArm(aboutA) {
     const pivot = aboutA ? 68 : 388;
     const arm = aboutA ? 2 : 6;
@@ -24,7 +54,7 @@ function momentArm(aboutA) {
 }
 
 let workshopTrussNumber = 0;
-function workshopTrussFigure(variant, values = {}) {
+function workshopTrussFigure(variant, values = {}, focus) {
     const id = `workshop-truss-${workshopTrussNumber++}`;
     const { nodes, members, load } = workshopTruss;
     const px = x => 104 + x * 26;
@@ -36,7 +66,8 @@ function workshopTrussFigure(variant, values = {}) {
         const centerX = px(x);
         const centerY = py(y);
         points[name] = [centerX / 3.4, centerY / 3.55];
-        return `<circle cx="${centerX}" cy="${centerY}" r="4"/><text x="${centerX + 10}" y="${centerY - 8}">${name}</text>`;
+        return `${focus === name ? `<circle class="active-truss-joint" cx="${centerX}" cy="${centerY}" r="10"/>` : ''}
+            <circle cx="${centerX}" cy="${centerY}" r="4"/><text x="${centerX + 10}" y="${centerY - 8}">${name}</text>`;
     }).join('');
     const rods = members.map(name => {
         const [x1, y1] = nodes[name[0]];
@@ -72,7 +103,7 @@ function workshopTrussFigure(variant, values = {}) {
     </svg>`, points, reactions ? t('The blue arrows show the assumed positive directions. A negative result reverses the corresponding arrow.') : '');
 }
 
-function workshopPlot(kind) {
+function workshopPlot(kind, highlightPositive = false) {
     const moment = kind === 'M';
     const axis = 104;
     const peak = moment ? '48 kN·m' : '24 kN';
@@ -81,7 +112,7 @@ function workshopPlot(kind) {
         <path class="plot-axis" d="M26 ${axis}H359"/>
         <path class="plot-guide" d="M48 29V182M190 29V182M332 29V182"/>
         ${moment ? '<path class="plot-area" d="M48 104Q190 252 332 104Z"/><path class="plot-line" d="M48 104Q190 252 332 104"/>' :
-            '<path class="plot-area" d="M48 104V33L190 104Z"/><path class="plot-area negative" d="M190 104L332 175V104Z"/><path class="plot-line" d="M30 104H48V33L332 175V104H353"/>'}
+            `<path class="plot-area${highlightPositive ? ' positive-shear-area' : ''}" d="M48 104V33L190 104Z"/><path class="plot-area negative" d="M190 104L332 175V104Z"/><path class="plot-line" d="M30 104H48V33L332 175V104H353"/>`}
         <text x="32" y="19">${moment ? t('M · positive downward') : t('V · positive upward')}</text>
         <text x="${moment ? 198 : 54}" y="${moment ? 177 : 47}">+${peak}</text>
         ${moment ? '' : '<text x="264" y="170">−24 kN</text>'}
@@ -99,15 +130,23 @@ const workshopDrawings = {
         <text x="300" y="29">10 kN</text><text x="118" y="139">30°</text>
         <text x="173" y="168">Fₓ</text><text x="307" y="88">Fᵧ</text>`),
         { x: [40,82], y: [63,47], f: [41,46] }),
-    roof: () => workshopFigure(plate(t('Roof plan with one middle beam and 4 metre bays on both sides. The middle beam gets two half-bays.'), `
-        <path class="diagram-fill" d="M112 25H348V143H112Z"/>
-        <path d="M112 54H348V114H112Z" fill="#99b3e5"/>
-        <path class="diagram-line" d="M112 25H348M112 84H348M112 143H348M66 25V143m-4-118h8m-8 59h8m-8 59h8"/>
-        <path class="diagram-dash" d="M112 54H348M112 114H348"/>
-        <text x="32" y="59">4 m</text><text x="32" y="119">4 m</text><text x="357" y="88">${t`Beam`}</text>
-        <text x="230" y="166" text-anchor="middle">${t`Tributary width = 2 m + 2 m`}</text>`)),
+    'vector-sum': () => workshopFigure(plate(t('Horizontal pull from each cable. The first cable pulls right with 8.66 kN. The second cable pulls left with 3 kN.'), `
+        <path class="diagram-dash" d="M175 22V156"/>
+        <path class="diagram-arrow" d="M175 45H365M175 94H109"/>
+        <text x="195" y="32">${t('First cable')} · +${numberText(8.66)} kN</text>
+        <text x="112" y="82">${t('Second cable')} · −3 kN</text>`)),
+    'vector-resultant': () => workshopFigure(componentVectorPlate(5.66, 5, null, 'angle')),
+    'oblique-vector': () => workshopFigure(conceptPlate('cosine-triangle')),
+    vibration: () => workshopFigure(conceptPlate('vibration')),
+    'hanging-weight': () => workshopFigure(conceptPlate('hanging-weight')),
+    roof: () => roofPlan({ bay: 4, length: 6 }),
+    'roof-line-load': () => roofPlan({ bay: 4, length: 6, oneMetre: true }),
+    'roof-edge': () => roofPlan({ edge: true, bay: 4, length: 6 }),
+    'roof-strip': () => roofPlan(),
     supports: () => workshopBeam({ L: 6, a: 0, b: 6, points: [], udls: [] }),
     'support-arrows': () => workshopBeam({ L: 6, a: 0, b: 6, points: [], udls: [] }, [0,1,2]),
+    'fixed-support': () => workshopFigure(fixedDiagram([], false)),
+    'two-rollers': () => workshopFigure(beamFigure({ L: 6, a: 0, b: 6, points: [], udls: [] }, [1, 2], { rollerAtA: true })),
     'reaction-beam': () => workshopBeam(beamStart),
     'reaction-patch': () => workshopBeam(beamStart),
     'reaction-resultant': () => workshopBeam({ ...beamStart, points: [...beamStart.points, { x: 6, p: 32 }], udls: [] }, [1,2]),
@@ -122,11 +161,9 @@ const workshopDrawings = {
     'sketch-beam': () => workshopBeam(sketchBeam),
     'point-beam': () => workshopBeam(center),
     'shear-plot': () => workshopPlot('V'),
+    'positive-shear': () => workshopPlot('V', true),
     'moment-plot': () => workshopPlot('M'),
-    'triangle-load': () => workshopFigure(plate(t('A triangular diagram increasing from zero at the left to its peak at the right.'), `
-        <path class="diagram-fill" d="M106 131L344 39V131Z"/>
-        <path class="diagram-line" d="M81 131H366M106 147H344M106 142V152M344 142V152"/>
-        <text x="225" y="165" text-anchor="middle">${t`Base`}</text><text x="354" y="57">${t`Peak`}</text>`)),
+    'triangle-load': () => workshopFigure(triangleLoadPractice('12 kN/m', false, 6)),
     bar: () => workshopFigure(plate(t('A steel bar carries tension at each end. Measure the cross-section and the original gauge length.'), `
         <path class="diagram-fill" d="M118 65H342V119H118Z"/>
         <path class="diagram-arrow" d="M117 92H55M343 92H405"/>

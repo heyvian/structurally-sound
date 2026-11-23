@@ -1,5 +1,13 @@
-function paperCalculation(symbol, unit, inputs, numerator, denominator, calculate) {
-    return { symbol, unit, inputs, calculate, paper: { numerator, denominator } };
+function paperCalculation(symbol, label, unit, inputs, numerator, denominator, calculate) {
+    return { symbol, label, unit, inputs, calculate, paper: { numerator, denominator } };
+}
+
+function paperSymbols({ symbol, label, unit, inputs }) {
+    return `<dl class="paper-symbols" aria-label="${t('What the symbols mean')}">
+        ${[[symbol, label, unit], ...inputs].map(([name, meaning, units]) => `<div>
+            <dt><var>${escapeTutor(name)}</var></dt><dd>${escapeTutor(meaning)}${units ? ` (${escapeTutor(units)})` : ''}</dd>
+        </div>`).join('')}
+    </dl>`;
 }
 
 function paperEquation(calculation, mode, values = calculation.inputs.map(input => input[3])) {
@@ -32,14 +40,15 @@ function recordedCalculation(turn, record) {
     const calculation = turn.calculation;
     if (!calculation?.paper) return '';
     const values = record?.substitution || calculation.inputs.map(input => input[3]);
-    return `<div class="lesson-paper-work"><h4>${t('Formula substitution')}</h4>${paperEquation(calculation, 'symbol')}
+    return `<div class="lesson-paper-work"><h4>${t('Formula substitution')}</h4>${paperSymbols(calculation)}${paperEquation(calculation, 'symbol')}
         ${paperEquation(calculation, 'value', values)}${paperResult(calculation, values)}</div>`;
 }
 
 function guidedCalculation(calculation) {
     return `<details class="tutor-calculator" ${calculation.paper ? 'open' : ''}><summary>${t('Try it in the formula')}</summary>
-        <form>${calculation.paper ? `<p>${t('Put each given value in its place in the equation. Check the units beside the fields.')}</p>
-            ${paperEquation(calculation, 'symbol')}${paperEquation(calculation, 'edit')}` : formulaFields(calculation)}
+        <form>${calculation.paper ? `${paperSymbols(calculation)}${paperEquation(calculation, 'symbol')}
+            <p>${t('Put each given value in its place in the equation. Check the units beside the fields.')}</p>
+            ${paperEquation(calculation, 'edit')}` : formulaFields(calculation)}
             <button type="submit">${t('Calculate')}</button><div role="status" data-tutor-result></div></form></details>`;
 }
 
