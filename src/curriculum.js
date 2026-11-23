@@ -21,7 +21,7 @@ const units = [
         intro: t('Forces are vectors. Resolve them into perpendicular components using SOH CAH TOA. If the angle is measured from +x, Fx = F cos θ and Fy = F sin θ.'),
         q: [
             Q(t('Which ratio equals sine?'),[t('Adjacent / hypotenuse'),t('Opposite / hypotenuse'),t('Opposite / adjacent')],1,t('SOH: sine = opposite / hypotenuse.')),
-            N(t('A 10 kN force acts at 30° above +x. Find Fy.'),5,t('10 sin 30° = 5 kN.'),t('The vertical component is opposite the angle.'),'kN'),
+            N(t('The 10 kN arrow points 30° above the positive horizontal axis (+x). Find its vertical component, Fᵧ.'),5,t('10 sin 30° = 5 kN.'),t('The vertical component is opposite the angle.'),'kN'),
             N(t('Find the magnitude of a resultant with components 3 and 4 kN.'),5,'√(3² + 4²) = 5 kN.',t('Use Pythagoras.'),'kN'),
         ],
     },
@@ -41,8 +41,8 @@ const units = [
         intro: t('A moment is a force times its perpendicular lever arm. Taking moments about a support removes unknown reactions at that point from the moment equation.'),
         q: [
             N(t('A 6 kN force acts perpendicular to a 2 m lever. Moment magnitude?'),12,'6 × 2 = 12 kN·m.',t('Force times perpendicular distance.'),'kN·m'),
-            N(t('A 6 m simply supported beam has a 12 kN point load 2 m from A. Find vertical reaction B.'),4,t('Taking moments about A: B × 6 = 12 × 2, so B = 4 kN.'),t('Take moments about A.'),'kN'),
-            N(t('On a 6 m simple span a 12 kN downward load acts 2 m from A. Given Rᵦ = 4 kN, find Rₐ.'),8,t('A + 4 − 12 = 0, giving A = 8 kN.'),t('Use vertical equilibrium.'),'kN'),
+            N(t('A 6 m beam rests on a pin at A and a roller at B. A 12 kN load acts down, 2 m to the right of A. Find the upward reaction at B.'),4,t('Taking moments about A: B × 6 = 12 × 2, so B = 4 kN.'),t('Take moments about A.'),'kN'),
+            N(t('On the 6 m beam, a 12 kN load acts down and support B pushes up with 4 kN. What upward force does support A supply?'),8,t('A + 4 − 12 = 0, giving A = 8 kN.'),t('Use vertical equilibrium.'),'kN'),
         ],
     },
     {
@@ -70,7 +70,7 @@ const units = [
         date: t('Oct 22 · Quiz 6'),
         intro: t('The centroid is an area-weighted location. The second moment of area describes how area is distributed about an axis, influencing bending stiffness.'),
         q: [
-            N(t('A rectangle is 20 mm wide and 30 mm deep. Find centroidal Ix in mm⁴.'),45000,localizedEquation('20 × 30³ / 12 = 45,000 mm⁴.'),t('Cube the depth, not the width.'),'mm⁴'),
+            N(t('A rectangular section is 20 mm wide and 30 mm tall. Find Iₓ, its second moment of area about the horizontal line through its centre, in mm⁴.'),45000,localizedEquation('20 × 30³ / 12 = 45,000 mm⁴.'),t('Cube the depth, not the width.'),'mm⁴'),
             {type:'table',prompt:t('Required Ix ≥ 80 × 10⁶ mm⁴. Select the lightest illustrative section satisfying this criterion alone.'),opts:['A','B','C'],answer:1,explain:t('B is the lightest candidate meeting the stated inertia. Real selection also requires other strength, stability and serviceability checks.'),hint:t('Eliminate insufficient Ix, then compare mass.')},
             N(t('Two areas of 10 and 30 mm² have centroid heights 0 and 20 mm. Combined centroid height?'),15,'(10×0 + 30×20)/40 = 15 mm.',t('Use an area-weighted average.'),'mm'),
         ],
@@ -80,7 +80,7 @@ const units = [
         date: t('Oct 29 · Quiz 7'),
         intro: t('Slender compression members can become unstable. Ideal Euler buckling load Pcr = π²EI/(KL)².'),
         q: [
-            Q(t('If effective length doubles, ideal Euler load becomes…'),[t('Twice as large'),t('One half'),t('One quarter')],2,t('The effective length is squared in the denominator.')),
+            Q(t('A column keeps the same material and cross-section. Its effective length KL doubles. What happens to its ideal buckling load?'),[t('Twice as large'),t('One half'),t('One quarter')],2,t('The new load is the old load divided by 2². The column’s material and shape stay the same, so the only change is from (KL)² to (2KL)² in the denominator.')),
             Q(t('Which member is generally more susceptible to buckling, all else equal?'),[t('Long slender column'),t('Short stocky column')],0,t('Slenderness increases instability risk.')),
             Q(t('Which section property appears in Euler’s formula?'),[t('Second moment of area'),t('Volume'),t('Mass')],0,t('EI governs flexural stiffness.')),
         ],
@@ -91,7 +91,7 @@ const units = [
         intro: t('Ideal pin-jointed truss members carry axial tension or compression. Start with whole-truss reactions, then isolate joints or sections.'),
         q: [
             Q(t('Ideal truss members primarily carry…'),[t('Axial tension or compression'),t('Bending only'),t('Torsion only')],0,t('Ideal pin-jointed members are two-force members.')),
-            N(t('At an isolated joint, a member at 30° must supply 5 kN upward. Find its axial force magnitude.'),10,t('F sin 30° = 5, giving F = 10 kN.'),t('Resolve the member force vertically.'),'kN'),
+            N(t('At the isolated joint, a member slopes up to the right at 30° from horizontal. Its vertical force component is 5 kN upward. How large is the force along the member?'),10,t('The 5 kN vertical component lies across from the 30° angle. Sine is opposite over hypotenuse, so 5 kN = F × sin 30°. Divide by sin 30° = 0.5 to get F = 10 kN.'),t('Resolve the member force vertically.'),'kN'),
             Q(t('You assumed tension and calculated −8 kN. What is the actual state?'),[t('8 kN tension'),t('8 kN compression'),t('Zero force')],1,t('A negative result reverses the assumed direction.')),
         ],
     },
@@ -118,7 +118,7 @@ const adds = [
         Q(t('Which is an appropriate method for a non-right triangle with two known sides and their included angle?'),[t('SOH CAH TOA alone'),t('Cosine law'),t('Sum of horizontal forces alone')],1,t('Cosine law relates two sides and their included angle to the third side.')),
     ],
     [
-        Q(t('How many planar degrees of freedom does a free rigid body have?'),['2','3','6'],1,t('There are two translations and one rotation.')),
+        Q(t('How many independent ways can a rigid object move in a plane when nothing holds it in place? These are its degrees of freedom.'),['2','3','6'],1,t('There are two translations and one rotation.')),
         Q(t('An assumed upward reaction solves to −5 kN. What does this mean?'),[t('5 kN downward'),t('5 kN upward'),t('No reaction')],0,t('The sign reverses the assumed direction.')),
         {type:'fbd',prompt:t('For the beam with a pin at A, horizontal roller at B and downward point load, select all support reactions to show on its free-body diagram.'),opts:[t('Ax: horizontal at A'),t('Ay: vertical at A'),t('By: vertical at B'),t('MA: moment at A'),t('Bx: horizontal at B')],answer:[0,1,2],explain:t('Pin A restrains both translations; roller B on a horizontal surface restrains vertical translation. Neither resists a moment.'),hint:t('Which translations and rotations does each support restrain?')},
     ],
@@ -138,13 +138,13 @@ const adds = [
         {type:'stress',prompt:t('Identify fracture on the idealized stress–strain curve.'),answer:3,explain:t('Fracture occurs at the termination of the curve.'),hint:t('Look for the end of the test.')},
     ],
     [
-        N(t('A section has Iₓₓ = 45×10⁶ mm⁴ and c = 150 mm. Calculate elastic section modulus S in mm³.'),300000,localizedEquation('S=I/c = 45,000,000/150=300,000 mm³.'),t('Divide by distance to extreme fibre.'),'mm³'),
+        N(t('A section has second moment of area Iₓ = 45×10⁶ mm⁴ about its neutral axis. The farthest edge is c = 150 mm from that axis. Find the elastic section modulus Sₓ in mm³.'),300000,localizedEquation('S=I/c = 45,000,000/150=300,000 mm³.'),t('Divide by distance to extreme fibre.'),'mm³'),
         N(t('A beam has Mmax = 60 kN·m and allowable bending stress 150 MPa. Find required S in mm³.'),400000,localizedEquation('60×10⁶ N·mm / 150 N/mm² = 400,000 mm³.'),t('Convert kN·m to N·mm.'),'mm³'),
         {type:'table',tableKind:'S',prompt:t('Select the lightest illustrative beam with Sₓ ≥ 400×10³ mm³, considering only this sizing criterion.'),opts:['A','B','C'],answer:1,explain:t('B meets the required section modulus with the lowest mass among qualifying options. Real selection requires checks beyond bending stress.'),hint:t('Compare S first, then mass.')},
         N(t('A component has area 200 mm², local Iₓₓ=2,000 mm⁴, and centroid 10 mm from the combined neutral axis. Find its contribution to Iₓₓ.'),22000,localizedEquation('I = Ic+Ad² = 2,000 + 200×100 = 22,000 mm⁴.'),t('Use the parallel-axis theorem.'),'mm⁴'),
     ],
     [
-        Q(t('What happens to ideal Euler buckling capacity if E doubles, with I and effective length unchanged?'),['Doubles','Halves',t('Stays unchanged')],0,t('Pcr is directly proportional to E.')),
+        Q(t('The elastic modulus E doubles. The second moment of area I and the effective length KL stay the same. What happens to the ideal Euler buckling load?'),['Doubles','Halves',t('Stays unchanged')],0,t('Pcr is directly proportional to E.')),
         Q(t('What is the primary loading associated with column buckling?'),[t('Axial compression'),t('Pure tension'),t('Unloaded rotation')],0,t('A slender member under compression may become unstable.')),
     ],
     [
@@ -181,17 +181,17 @@ const extra = [
     [
         Q(t('Wind pulling away from cladding is called…'),[t('Pressure'),t('Suction'),t('Dead load')],1,t('Suction acts outward from the surface.')),
         Q(t('Which is a line load?'),[t('A wall bearing continuously on a beam'),t('A column bearing at one spot'),t('Snow over a roof area')],0,t('The wall distributes force along a length.')),
-        N(t('Roof area load 3 kPa; tributary width 4 m. Line load?'),12,'3 kN/m² × 4 m = 12 kN/m.',t('Multiply by tributary width.'),'kN/m'),
+        N(t('The highlighted beam carries a 4 m-wide strip of roof. The roof pressure is 3 kPa, or 3 kN per square metre. How much force does each metre of beam carry?'),12,'3 kN/m² × 4 m = 12 kN/m.',t('Multiply by tributary width.'),'kN/m'),
         N(t('A column receives 6 kPa from a 5 m × 4 m tributary area. Total force?'),120,'6 × 20 = 120 kN.',t('Area × pressure.'),'kN'),
         Q(t('Which is the usual gravity load path?'),[t('Deck → beam → girder → column → foundation'),t('Deck → foundation → girder → column'),t('Column → beam → deck → soil')],0,t('Loads flow to supports and then the ground.')),
         Q(t('A periodic excitation near the natural frequency can cause…'),[t('Resonance'),t('Reduced mass'),t('Zero acceleration')],0,t('Dynamic response can be amplified.')),
-        N(t('Natural frequency is 2 Hz. Period?'),.5,localizedEquation('T=1/f=0.5 s.'),t('Reciprocal of frequency.'),'s'),
+        N(t('A member vibrates twice per second at its natural frequency of 2 Hz. How long does one complete cycle take?'),.5,localizedEquation('T=1/f=0.5 s.'),t('Reciprocal of frequency.'),'s'),
         N(t('A stationary 300 kg mass hangs from one vertical cable. With g = 9.81 m/s², find cable tension.'),2.943,t('300×9.81/1000=2.943 kN. kg measures mass, not force.'),t('Convert weight to force.'),'kN'),
     ],
     [
         N(t('A force of 125 kN acts at 30° above +x. Horizontal component?'),125*Math.cos(Math.PI/6),t('125 cos 30° = 108.25 kN.'),t('Adjacent projection.'),'kN'),
         N(t('A 125 kN force points 30° above +x. Find its vertical component.'),62.5,t('125 sin 30° = 62.50 kN.'),t('Opposite projection.'),'kN'),
-        N(t('A 40 kN force points 30° above −x. Signed Fx?'),-40*Math.cos(Math.PI/6),t('Fx=−40cos30°=−34.64 kN.'),t('Leftward is negative.'),'kN'),
+        N(t('A 40 kN force points up and left, at 30° above the leftward horizontal (−x). Find the horizontal component Fₓ, taking right as positive.'),-40*Math.cos(Math.PI/6),t('Fx=−40cos30°=−34.64 kN.'),t('Leftward is negative.'),'kN'),
         N(t('Two perpendicular forces +60 kN x and +80 kN y combine. Resultant magnitude?'),100,'√(60²+80²)=100 kN.',t('Pythagoras.'),'kN'),
         N(t('Find the angle above +x of a vector with Fx=60 kN and Fy=80 kN.'),Math.atan2(80,60)*180/Math.PI,t('atan(80/60)=53.13°.'),t('Use inverse tangent in degrees.'),'°'),
         Q(t('A force vector can slide along its line of action on an ideal rigid body without changing…'),[t('Its external equilibrium effect'),t('Local stress everywhere'),t('Its magnitude and direction independently')],0,t('Transmissibility preserves the external rigid-body effect, not necessarily local stresses.')),
@@ -207,22 +207,22 @@ const extra = [
         N(t('A triangular load goes from zero to 12 kN/m over 6 m. Resultant magnitude?'),36,'½×12×6=36 kN.',t('Area of triangle.'),'kN'),
         N(t('A triangular load rises linearly from zero to its peak over 6 m. How far from the heavy end is its resultant?'),2,t('L/3=2 m from the heavy end.'),t('Centroid of a triangle.'),'m'),
         N(t('A 4 m cantilever has a 15 kN downward tip load. Fixed-end reaction moment magnitude?'),60,'15×4=60 kN·m.',t('Take moments at the fixed support.'),'kN·m'),
-        N(t('An 8 m simple beam carries 6 kN/m over the leftmost 4 m. Find RB.'),6,t('Resultant 24 kN at x=2; RB=24×2/8=6 kN.'),t('First replace the UDL.'),'kN'),
+        N(t('An 8 m beam has a pin at A on the left and a roller at B on the right. Only the first 4 m from A carry a downward load of 6 kN/m. Find the upward force at B.'),6,t('Resultant 24 kN at x=2; RB=24×2/8=6 kN.'),t('First replace the UDL.'),'kN'),
         N(t('An 8 m simple span carries 6 kN/m over the leftmost 4 m. The right reaction is 6 kN. Find the left reaction.'),18,'RA=24−6=18 kN.',t('Vertical equilibrium.'),'kN'),
-        N(t('A pin at x=0 and roller at x=6 support a 200 kN downward load at x=9 (overhang). Find signed RA.'),-100,'RB×6=200×9, RB=300. RA=200−300=−100 kN.',t('Upward positive.'),'kN'),
+        N(t('The beam extends past roller B. From pin A, the roller is 6 m away and the 200 kN downward load is 9 m away. Find the signed vertical reaction at A. Take up as positive.'),-100,'RB×6=200×9, RB=300. RA=200−300=−100 kN.',t('Upward positive.'),'kN'),
     ],
     [
         Q(t('A downward point load changes a shear diagram how?'),[t('Vertical drop'),t('Parabolic jump'),t('Continuous rising line')],0,t('A concentrated downward force creates an abrupt downward jump.')),
         Q(t('Under uniform downward load, M is…'),[t('Linear'),t('Quadratic'),t('Constant')],1,t('V varies linearly; integrating it produces quadratic moment.')),
-        Q(t('Where do you look for an interior extremum of a smooth moment diagram?'),['V=0',t('M=0 only'),t('Every support only')],0,t('dM/dx=V; also check discontinuities and boundary points.')),
+        Q(t('On a smooth part of the bending moment diagram, where can the moment change from rising to falling or vice versa?'),['V=0',t('M=0 only'),t('Every support only')],0,t('dM/dx=V; also check discontinuities and boundary points.')),
         Q(t('At an unloaded free end with no applied couple, V and M are…'),[t('Both zero'),t('Both maximum'),t('Always opposite')],0,t('No resultant internal shear or bending moment at the free end.')),
         N(t('Constant shear +8 kN over 2.5 m. Change in M?'),20,localizedEquation('ΔM=8×2.5=20 kN·m.'),t('Area under V.'),'kN·m'),
     ],
     [
         Q(t('What is permanent deformation after unloading called?'),[t('Elastic'),t('Plastic'),t('Resonant')],1,t('Plastic deformation remains after unloading.')),
         Q(t('A sharp notch can create…'),[t('Stress concentration'),t('Constant stress everywhere'),t('A zero force reaction')],0,t('Abrupt geometry can amplify local stress.')),
-        N(t('Steel fy=250 MPa, course allowable factor 0.60. Find fa.'),150,localizedEquation('0.60×250=150 MPa.'),t('Multiply by the specified factor.'),'MPa'),
-        N(t('Steel fy=350 MPa, factor 0.60. Find fa.'),210,localizedEquation('0.60×350=210 MPa.'),t('Use the stated yield strength.'),'MPa'),
+        N(t('The steel’s yield strength fᵧ is 250 MPa. In this exercise, the allowable stress fₐ is 60% of that strength. Find fₐ in MPa.'),150,localizedEquation('0.60×250=150 MPa.'),t('Multiply by the specified factor.'),'MPa'),
+        N(t('This steel has a yield strength of 350 MPa. For this exercise, use 60% of that strength as the allowable stress. What is that stress in MPa?'),210,localizedEquation('0.60×350=210 MPa.'),t('Use the stated yield strength.'),'MPa'),
         N(t('A 45 kN axial force and 150 MPa allowable stress. Minimum area?'),300,localizedEquation('45,000/150=300 mm².'),'A=P/fa.','mm²'),
         N(t('For a rectangular section b=50 mm, h=100 mm, calculate Sx.'),50*100**2/6,localizedEquation('S=bh²/6=83,333.33 mm³.'),t('Cube is for I; square is for S.'),'mm³'),
         N(t('M=60 kN·m and S=400,000 mm³. Maximum bending stress?'),150,localizedEquation('60×10⁶/400,000=150 MPa.'),'M/S.','MPa'),
@@ -308,12 +308,13 @@ const beams=[{L:8,a:0,b:8,points:[{x:2,p:24}],udls:[{s:4,e:8,w:8}]},{L:10,a:0,b:
 
 units[3].q.push(...beamQs(beams[0]).slice(0,2));units[4].q.push(...beamQs(beams[2]).slice(2),...beamQs(beams[1]).slice(2));
 
+const memberSign = t('For member forces, give a positive number in tension (pulling) or a negative number in compression (pushing).');
 const trussQs = [
     {...N(t('Find vertical reaction at B.'),20,t('Symmetry implies RA=RB=20 kN.'),t('Start with whole truss.'),'kN'),fig:'truss'},
     {...N(t('At joint C, calculate signed force in AC. Positive tension; negative compression.'),-40/(2*Math.sin(Math.PI/4)),t('2Fsin45°=−40, hence F=−28.284 kN (compression).'),t('Assume forces pull away from C.'),'kN'),fig:'truss'},
     {...N(t('Find signed force in bottom chord AB, positive for tension.'),20,t('At A, compressed AC pushes left by 20 kN. AB pulls right by 20 kN.'),t('Horizontal equilibrium at A.'),'kN'),fig:'truss'},
     {...Q(t('Which classification is correct?'),[t('AC and BC compression; AB tension'),t('AC and BC tension; AB compression'),t('All members in tension')],0,t('The diagonals push upward at C; the bottom chord ties supports together.')),fig:'truss'},
-];
+].map((question, i) => i === 1 || i === 2 ? { ...question, setup: memberSign } : question);
 units[8].q.push(...trussQs);
 
 
@@ -329,5 +330,5 @@ const latqs = [
     {...N(t('At joint A, Ax=−90 kN. Find signed member AB.'),90,t('AB pulls to the right by 90 kN.'),'Use ΣFx=0.','kN'),fig:'lateral'},
     {...N(t('At joint B, RB=+180 kN, AB=+90 kN and BD=−90 kN. Find signed BC.'),-90*Math.SQRT2,t('BC pushes down/right at B by 90 kN in each direction. BC=−127.28 kN.'),t('Check both horizontal and vertical equations.'),'kN'),fig:'lateral'},
     {...Q(t('Which members are in compression?'),[t('ED, BD and BC'),t('AC, CD and CE'),t('AB, AC and CE')],0,t('The three negative forces ED, BD and BC indicate compression; other members here are in tension.')),fig:'lateral'},
-];
+].map((question, i) => i >= 3 && i <= 9 ? { ...question, setup: memberSign } : question);
 units[8].q.push(...latqs.slice(0,5));units[9].q.push(...latqs.slice(5));

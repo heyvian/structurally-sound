@@ -41,7 +41,7 @@ function analyze(beam) {
     });
     const ms = [...breaks, ...roots].sort((a, b) => a - b).map(x => ({ x, v: M(x) }));
     return {
-        RA, RB, vs, ms, M, V,
+        RA, RB, forces, vs, ms, M, V,
         Vmax: Math.max(...vs.map(({ v }) => Math.abs(v))),
         Mmax: Math.max(...ms.map(({ v }) => Math.abs(v))),
     };
@@ -72,18 +72,26 @@ function graphQuestion(beam, kind) {
 }
 
 function beamQs(beam) {
-    const { RA, RB, Vmax, Mmax } = analyze(beam);
+    const { RA, RB, forces, Vmax, Mmax } = analyze(beam);
     const total = RA + RB;
     const arm = beam.b - beam.a;
     const loadMoment = RB * arm;
     const withBeam = question => ({ ...question, b: beam });
+    const loadTerms = forces.map(({ x, p }) => `(${numberText(p)} kN × ${numberText(x - beam.a)} m)`).join(' + ');
+    const forceTerms = forces.map(({ p }) => `${numberText(p)} kN`).join(' + ');
     return [
-        withBeam(N(t('Find the signed vertical reaction at B. Upward is positive.'), RB,
-            t`Take moments about A. Rᵦ × ${numberText(arm)} m = ${numberText(loadMoment)} kN·m, giving Rᵦ = ${numberText(RB)} kN.`,
-            t('Replace each distributed load with its resultant at the centre of the loaded length.'), 'kN')),
-        withBeam(N(t('Find the signed vertical reaction at A. Upward is positive.'), RA,
-            t`Force balance gives Rₐ = ${numberText(total)} − (${numberText(RB)}) = ${numberText(RA)} kN.`,
-            t('The sum of upward reactions balances the downward loads.'), 'kN')),
+        withBeam({ ...N(t('Find the signed vertical reaction at B, the right-hand support. Take up as positive.'), RB,
+            t('Dividing a moment in kN·m by its lever arm in m leaves a force in kN.'),
+            t('Replace each distributed load with its resultant at the centre of the loaded length.'), 'kN'),
+            work: [t('Take moments about A. The reaction at A has a zero lever arm, so it drops out of this equation.'),
+                t`Balance the effects of the downward loads about A. Bᵧ × ${numberText(arm)} m = ${loadTerms} = ${numberText(loadMoment)} kN·m.`,
+                t`Divide both sides by ${numberText(arm)} m to get Bᵧ = ${numberText(RB)} kN.`] }),
+        withBeam({ ...N(t('Find the signed vertical reaction at A, the left-hand support. Take up as positive.'), RA,
+            t('Both sides of the vertical force equation have units of kN.'),
+            t('The sum of upward reactions balances the downward loads.'), 'kN'),
+            work: [t`Add the downward loads. Their total is ${forceTerms} = ${numberText(total)} kN.`,
+                t`The reaction at B is ${numberText(RB)} kN. Balance vertical forces with Aᵧ + (${numberText(RB)} kN) = ${numberText(total)} kN.`,
+                t`Subtract Bᵧ from both sides. Aᵧ = ${numberText(total)} kN − (${numberText(RB)} kN) = ${numberText(RA)} kN.`] }),
         graphQuestion(beam, 'V'),
         graphQuestion(beam, 'M'),
         withBeam(N(t('Find the maximum absolute shear.'), Vmax,

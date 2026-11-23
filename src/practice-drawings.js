@@ -9,7 +9,8 @@ const practiceBeams = {
     '3-1': shortPracticeBeam, '3-2': shortPracticeBeam, '3-3': fullPracticeLoad, '3-4': fullPracticeLoad,
     '3-9': patchPracticeLoad, '3-10': patchPracticeLoad, '3-11': pointSpan(9, 9, 200, 6),
     'guided-3-1': pointSpan(6, 4, 27),
-    '4-4': centralPracticeBeam, '4-5': centralPracticeBeam,
+    '4-4': centralPracticeBeam, '4-5': centralPracticeBeam, 'guided-4-0': centralPracticeBeam,
+    'guided-0-1': loadedSpan(5, 6),
     '9-3': loadedSpan(5, 4), '9-5': loadedSpan(8, 6),
 };
 const practiceReactionIndex = {
@@ -38,6 +39,10 @@ const practiceTrussJoints = {
 const practiceTopics = ['load-path', 'triangle', 'pin-roller', 'moment-reference', 'shear-reference', 'bar', 'tee', 'buckling', 'truss', 'reaction-reference', 'triangle'];
 const practiceRoofAreas = { '0-2': [4, '20 m²'], '0-3': [2.5, '16 m²'], '0-8': [6, '5 m × 4 m'] };
 const practiceShearAreas = { '4-10': [8, 2.5], 'formula-4': [-8, 2.5] };
+const practiceSections = {
+    '5-11': [50, 100], '6-0': [20, 30], '6-7': [100, 200], '7-5': [60, 60],
+    'formula-6': [60, 100], 'guided-6-0': [100, 200],
+};
 const methodDrawings = {
     loadType: 'load-path', loadPath: 'load-path', tributary: 'roof-strip', vibration: 'vibration', weight: 'hanging-weight',
     units: 'unit-ruler', trig: 'triangle', triangleLength: 'triangle', obliqueTriangle: 'cosine-triangle',
@@ -46,7 +51,7 @@ const methodDrawings = {
     distributed: 'load-resultant', shear: 'shear-reference', bendingDiagram: 'moment-reference-plot', simpleBeam: 'moment-reference-plot',
     axialStress: 'bar', strain: 'strain-reference', stressCurve: 'stress-track', stressConcentration: 'stress-notch',
     allowable: 'stress-track', bendingStress: 'bend-reference', bendingSense: 'bend-reference',
-    sectionModulus: 'tee', steel: 'tee', rectangleInertia: 'rectangle-section', centroid: 'tee', parallelAxis: 'tee',
+    sectionModulus: 'tee', steel: 'wide-flange', rectangleInertia: 'rectangle-section', centroid: 'tee', parallelAxis: 'tee',
     eulerScale: 'buckling', euler: 'buckling', restraintScale: 'buckling', slenderness: 'buckling', deflection: 'cantilever',
     trussModel: 'truss', trussJoint: 'joint-reference', zeroMember: 'zero-joint', fractions: 'fraction-reference',
     angleUnits: 'triangle', isolate: 'balance-equation',
@@ -133,6 +138,30 @@ function triangularFbd(load, values = false, angle = true) {
         ${forceGlyph({ x: 74, y: 132, dx: 1, dy: 0, name: 'Aₓ', unit: 'kN', labelSide: 'right' }, values ? 0 : undefined)}`);
 }
 
+function apexJointPlate(load, angle, solved) {
+    const slope = (angle ?? 45) * Math.PI / 180;
+    const vertical = Math.sin(slope), horizontal = Math.cos(slope);
+    const force = solved && load != null ? -load / (2 * vertical) : undefined;
+    return plate(t('Isolated top joint C with a downward load and two diagonal members'), `
+        <path class="diagram-dash" d="M65 94H395"/>
+        <path class="diagram-arrow" d="M230 18V86"/><text x="239" y="33">${load == null ? 'P' : `${load} kN`}</text>
+        ${angle ? `<path class="diagram-line" d="M269 94A39 39 0 0 1 ${230 + 39 * horizontal} ${94 + 39 * vertical}"/>
+            <text x="276" y="119">${angle}°</text>` : ''}<text x="217" y="86">C</text>
+        ${forceGlyph({ x: 230, y: 94, dx: -horizontal, dy: vertical, length: 95, name: 'AC', unit: 'kN' }, force, solved)}
+        ${forceGlyph({ x: 230, y: 94, dx: horizontal, dy: vertical, length: 95, name: 'BC', unit: 'kN' }, force, solved)}
+        <circle cx="230" cy="94" r="4"/>`);
+}
+
+function rectangleSectionPlate(width, depth) {
+    const scale = Math.min(135 / width, 102 / depth);
+    const w = width * scale, h = depth * scale;
+    return plate(t('Rectangular section and centroidal axes'), `
+        <rect class="diagram-fill" x="${224 - w / 2}" y="${81 - h / 2}" width="${w}" height="${h}"/>
+        <path class="diagram-dash" d="M128 81H314M224 15V146"/>
+        <text x="321" y="85">x–x</text><text x="224" y="165" text-anchor="middle">b = ${width} mm</text>
+        <text x="${235 + w / 2}" y="${90 + h / 3}">h = ${depth} mm</text>`);
+}
+
 function lateralReactionPlate(knownRoller, solved) {
     const left = 132, right = 300, base = 192, top = 54;
     return plate(t('Truss with a rightward load above the pin and a roller to the right'), `
@@ -166,6 +195,10 @@ function conceptPlate(id) {
             <path class="diagram-fill" d="M119 33H332V61H244V151H207V61H119Z"/>
             <path class="diagram-dash" d="M97 51H349M224 13V166"/>
             <text x="120" y="26">${t('Flange')}</text><text x="253" y="113">${t('Web')}</text>`),
+        'wide-flange': () => plate(t('Wide-flange section with the horizontal major axis marked'), `
+            <path class="diagram-fill" d="M151 26H309V47H244V132H309V153H151V132H216V47H151Z"/>
+            <path class="diagram-dash" d="M104 89H347"/><text x="352" y="94">x</text>
+            <text x="155" y="20">${t('Flange')}</text><text x="255" y="112">${t('Web')}</text>`),
         'vector-frame': vectorSketch,
         'moment-reference': () => leverPlate(),
         'reaction-reference': () => beamFigure(loadedSpan(1, 'w'), [0, 1, 2], { isolated: true }).replace(/>1 m</g, '>L<'),
@@ -212,6 +245,22 @@ function practiceDrawing(question, solved = false) {
     const key = question.key;
     if (practiceRoofAreas[key]) return roofAreaPlate(...practiceRoofAreas[key]);
     if (practiceShearAreas[key]) return shearAreaPlate(...practiceShearAreas[key]);
+    if (practiceSections[key]) return rectangleSectionPlate(...practiceSections[key]);
+    if (key === '6-8' || key === '6-9') return teeProgress(key === '6-9' || solved ? 67.778 : undefined);
+    if (key === 'formula-8') return apexJointPlate(30, 30, solved);
+    if (['guided-8-0', '8-13', 'truss-exam-1'].includes(key)) return apexJointPlate(40, 45, solved);
+    if (key === '8-1') return addSvgLayer(vectorPlate(solved ? 10 : null, 30), '<text x="339" y="116">5 kN</text>');
+    if (key === '8-8') return plate(t('Two angled members meet at a joint with no external load'), `
+        <path class="diagram-line" d="M87 119H228L336 53"/><circle cx="228" cy="119" r="5"/>
+        <text x="229" y="147" text-anchor="middle">${t('Unloaded joint')}</text>
+        ${solved ? '<text x="143" y="109">0</text><text x="292" y="73">0</text>' : ''}`);
+    if (key === '8-4') return apexJointPlate(20, 45, solved);
+    if (key === '8-5') return apexJointPlate(null, null, solved);
+    if (key === '7-11') return restraintPair(['fixed-free', 'pin-pin']);
+    if (key === '7-8') {
+        const restraint = bucklingCases['fixed-free'];
+        return `<div class="restraint-pair"><figure>${restraintDiagram(restraint)}<figcaption>${restraint.title}${solved ? ' · K = 2' : ''}</figcaption></figure></div>`;
+    }
     if (key === '0-7' || key === 'formula-0') return roofPlan({ width: key === '0-7' ? 4 : 3, floor: key === 'formula-0' }).markup;
     if (key === 'guided-0-0') return roofPlan({ edge: true, bay: 3, floor: true }).markup;
     if (key === 'guided-2-1') return workshopDrawings['two-rollers']().markup;

@@ -24,18 +24,16 @@ const workshopTruss = {
 };
 
 const roofLineLoad = {
-    symbol: 'w', label: t('Load per metre of beam'), expression: 'q × bₜ', unit: 'kN/m',
+    symbol: 'w', label: t('Load per metre of beam'), unit: 'kN/m',
     inputs: [['q', t('Roof pressure'), 'kPa', 3], ['bₜ', t('Tributary width'), 'm', 4]],
     calculate: (q, width) => q * width,
-    substitute: (q, width) => `(${q} kN/m²) × (${width} m)`,
     paper: { numerator: [0, '×', 1] },
 };
 const eulerCalculation = {
-    symbol: 'Pcr', label: t('Critical buckling load'), expression: 'π²EI/(KL)²', unit: 'kN',
+    symbol: 'Pcr', label: t('Critical buckling load'), unit: 'kN',
     inputs: [['E', t('Elastic modulus'), 'N/mm²', 200000], ['I', t('Second moment of area'), 'mm⁴', 800000],
         ['K', t('End restraint factor'), '', 1], ['L', t('Physical unbraced length'), 'mm', 4000]],
     calculate: (elasticity, inertia, k, length) => Math.PI ** 2 * elasticity * inertia / (k * length) ** 2 / 1000,
-    substitute: (elasticity, inertia, k, length) => `π² × (${elasticity} N/mm²) × (${inertia} mm⁴) ÷ (${k} × ${length} mm)² ÷ (1,000 N/kN)`,
     paper: { numerator: ['π² ×', 0, '×', 1], denominator: ['(', 2, '×', 3, ')²'], conversion: '÷ (1,000 N/kN)' },
 };
 

@@ -33,7 +33,7 @@ function workshopRun(i) {
 
 function workshopFinished(i) {
     const run = workshopProgress.runs[i];
-    return Boolean(run?.finished && run.records[workshops[i].turns.length - 1]?.status);
+    return Boolean(run?.finished && run.records?.[workshops[i].turns.length - 1]?.status);
 }
 
 function workshopXp() {
@@ -393,8 +393,7 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
     if (calculator) {
         const result = calculator.querySelector('[data-tutor-result]');
         const calculation = turn.calculation;
-        const showCalculation = values => calculation.paper ? paperResult(calculation, values) : formulaSubstitution(calculation, values);
-        if (record.substitution) result.innerHTML = showCalculation(record.substitution);
+        if (record.substitution) result.innerHTML = paperResult(calculation, record.substitution);
         const fields = [...calculator.querySelectorAll('[data-formula-input]')];
         fields.forEach((field, i) => {
             field.value = localizeDraft(record.givens?.[i], record.givenLocale);
@@ -411,7 +410,7 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
             event.preventDefault();
             const values = fields.map(field => parseStudyNumber(field.value));
             const invalid = fields.filter((field, i) => {
-                const wrong = values[i] !== turn.calculation.inputs[i][3];
+                const wrong = values[i] !== calculation.inputs[i][3];
                 field.setAttribute('aria-invalid', String(wrong));
                 return wrong;
             });
@@ -421,8 +420,8 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
                 return;
             }
             record.substitution = values;
-            result.innerHTML = showCalculation(values);
-            if (calculation.paper && form) {
+            result.innerHTML = paperResult(calculation, values);
+            if (form) {
                 const input = form.elements['tutor-answer'];
                 input.value = studyInputText(calculation.calculate(...values));
                 input.dispatchEvent(new Event('input', { bubbles: true }));

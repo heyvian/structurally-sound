@@ -301,6 +301,35 @@ h1:focus, h2:focus { outline: none; }
 .unit-arrow { color: var(--red); font: 700 17px var(--mono); }
 .unit.capstone { background: #e1e6f5; }
 .unit.capstone .num { color: white; background: var(--blue); }
+.unit[data-lesson-state] {
+    --unit-status-ink: #53564d;
+    --unit-status-bg: #eeece2;
+    min-height: 86px;
+}
+.unit[data-lesson-state="in-progress"] {
+    --unit-status-ink: #24448c;
+    --unit-status-bg: #dce7fa;
+    border-color: #526daf;
+}
+.unit[data-lesson-state="complete"] {
+    --unit-status-ink: #265339;
+    --unit-status-bg: #dceadd;
+    border-color: #568165;
+}
+.unit[data-lesson-state] .num { color: var(--unit-status-ink); background-color: var(--unit-status-bg); }
+.unit[data-lesson-state="not-started"] .num { background-image: none; }
+.unit-name { display: block; }
+.unit-status { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 5px; }
+.unit-badge {
+    color: var(--unit-status-ink);
+    background: var(--unit-status-bg);
+    border: 1px solid currentColor;
+    padding: 2px 5px;
+    font: 700 11px/1.2 var(--mono);
+}
+.unit-status small { margin: 0; color: var(--unit-status-ink); }
+.unit-meter { display: block; height: 6px; margin-top: 7px; background: #dde2ec; }
+.unit-meter::before { content: ""; display: block; height: 100%; width: var(--steps-done); background: var(--unit-status-ink); }
 
 .panel, .lesson {
     border: 1px solid var(--ink);
@@ -405,6 +434,11 @@ h1:focus, h2:focus { outline: none; }
 .study-question .study-heading { border-left-color: var(--blue); }
 .study-heading h1 { margin: 7px 0; line-height: 1.02; font-size: clamp(33px,4.6vw,52px); }
 .question-setup { padding-left: 12px; border-left: 2px solid var(--line); }
+.practice-formula { padding: 8px 12px; border: 1px solid var(--line); background: #f8f9fd; }
+.practice-answers { margin: 8px 0; }
+.practice-answers > div { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-bottom: 2px; }
+.practice-answers dt { font-weight: 700; }
+.practice-answers dd { margin: 0; overflow-wrap: anywhere; }
 
 .modes, .studio-grid {
     display: grid;
@@ -531,7 +565,6 @@ progress::-moz-progress-bar { background: var(--red); }
 .worked li + li { border-top: 1px solid #a2adbf; }
 .worked li::marker { color: var(--blue); font: 800 1.1rem var(--display); }
 .formula { font-family: var(--mono); }
-.formula-result { display: flex; flex-wrap: wrap; gap: 4px 12px; overflow-wrap: anywhere; }
 .formula-result strong { color: var(--blue); }
 .options { display: grid; gap: 8px; margin: 13px 0; }
 .option { text-align: left; }
@@ -552,13 +585,11 @@ label { display: block; font-weight: 650; }
 
 .study-number { font: 16px var(--mono); }
 .number-answer, .profile-answer { max-width: 26rem; margin: 15px 0; }
-.match-fields, .diagram-fields, .formula-fields { margin: 13px 0; min-width: 0; border: 1px solid var(--line); padding: 10px 12px 12px; }
+.match-fields, .diagram-fields { margin: 13px 0; min-width: 0; border: 1px solid var(--line); padding: 10px 12px 12px; }
 .match-fields label + label { margin-top: 10px; }
 legend { padding: 0 6px; font: 700 13px var(--mono); }
 .station-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,145px),1fr)); gap: 9px; }
 .station-grid label { font-size: 13px; }
-.formula-fields label { display: grid; grid-template-rows: 1fr auto; }
-.formula-fields input[aria-invalid="true"] { border-color: var(--red); background: #fff0cb; }
 
 .diagram {
     display: block;

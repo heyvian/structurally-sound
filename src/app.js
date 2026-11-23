@@ -39,20 +39,22 @@ const guidedQuestions = lessonPlans.map((plan, i) => plan.guided.map((question, 
 function beamWorkshopQuestions(beam, key) {
     const { Mmax } = analyze(beam);
     const distributed = beam.udls.reduce((sum, { s, e, w }) => sum + (e - s) * w, 0);
+    const patch = beam.udls[0];
     return [
         { type: 'fbd', b: beam, prompt: t('Select every reaction to include on the free-body diagram.'),
+            setup: t('The beam rests on a pin at A and a roller on a level surface at B. Keep the applied loads and replace the supports with arrows for the reactions they can supply.'),
             opts: ['Aₓ', 'Aᵧ', 'Bᵧ', t('Moment at A'), 'Bₓ'], answer: [0, 1, 2],
             hint: t('Replace a pin with two force components and a horizontal roller with its normal reaction.'),
             explain: t('A pin provides Aₓ and Aᵧ. A horizontal roller provides Bᵧ. Initially include Aₓ even though the horizontal equilibrium equation will give zero.') },
-        { ...N(t('Find the total downward force from the distributed loading.'), distributed,
-            t`Take the area under the loading diagram. The distributed resultants add up to ${numberText(distributed)} kN.`,
+        { ...N(t('Replace the evenly spaced load arrows with one downward force. How large is that force?'), distributed,
+            t`The loaded length is ${numberText(patch.e)} m − ${numberText(patch.s)} m = ${numberText(patch.e - patch.s)} m. Multiply by ${numberText(patch.w)} kN/m to get ${numberText(distributed)} kN. The metres cancel.`,
             t('Multiply each load intensity by its loaded length.'), 'kN'), b: beam },
-        { ...N(t('Measured from A, where does the uniform patch load act as an equivalent point force?'),
-            (beam.udls[0].s + beam.udls[0].e) / 2 - beam.a,
-            t`The resultant is at the midpoint of the loaded interval, ${numberText((beam.udls[0].s + beam.udls[0].e) / 2 - beam.a)} m from A.`,
+        { ...N(t('Where should the single force that replaces the evenly spread load act? Give its distance from A.'),
+            (patch.s + patch.e) / 2 - beam.a,
+            t`The force acts halfway between the start and end of the loaded patch, at ${numberText((patch.s + patch.e) / 2 - beam.a)} m from A.`,
             t('Measure the centre of the loaded interval from A.'), 'm'), b: beam },
         ...beamQs(beam),
-        N(t`With |M|max = ${numberText(Mmax)} kN·m and allowable bending stress 150 MPa, calculate required Sₓ.`,
+        N(t`The largest bending moment magnitude is ${numberText(Mmax)} kN·m. What section modulus Sₓ keeps bending stress at or below 150 MPa? Give your answer in thousands of mm³.`,
             Mmax * 1000 / 150, `Sₓ = |M|/fₐ = ${numberText(Mmax * 1000 / 150)}×10³ mm³.`,
             t('Convert moment to N·mm and use the displayed units for Sₓ.'), '10³ mm³'),
         steelQ('S', Mmax * 1000 / 150, steelProfiles),
@@ -104,6 +106,7 @@ function methodPanel(method, open = false) {
     return `<details class="method-panel" ${open ? 'open' : ''}>
         <summary><span class="method-label">${t('Method')}</span><strong>${method.title}</strong></summary>
         <div class="method-body">
+            ${method.symbols ? symbolDefinitions(method.symbols) : ''}
             ${method.formula ? `<p class="method-formula">${method.formula}</p>` : ''}
             <div class="method-grid">
                 ${list(method.steps, 'ol')}
@@ -118,7 +121,7 @@ function questionMethod(question) {
     const id = questionMethods.get(question.key);
     const guided = question.step === t('Do it together') || question.type === 'formula';
     const firstUse = !session.queue.slice(0, session.cursor).some(earlier => questionMethods.get(earlier.key) === id);
-    return methodPanel(methods[id], guided || (firstUse && session.mode !== 'review'));
+    return methodPanel(methods[id], guided || firstUse);
 }
 
 function practiceMistake(question, input) {
@@ -126,6 +129,13 @@ function practiceMistake(question, input) {
     const method = questionMethods.get(question.key);
     if (method === 'reactions' || (method === 'balance' && question.type === 'number')) return 'reactions';
     if (method === 'trig' && question.type === 'choice') return 'trig';
+    const vector = practiceVectors[question.key];
+    if (question.type === 'number' && vector) {
+        const [force, angle, axis] = vector;
+        const radians = angle * Math.PI / 180;
+        const otherComponent = force * (axis === 'x' ? Math.sin(radians) : Math.cos(radians));
+        if (grade({ ...question, answer: Math.abs(otherComponent) }, Math.abs(input))) return 'trig';
+    }
 }
 
 function focusPage() {
@@ -166,6 +176,24 @@ function learningProgress() {
     </aside>`;
 }
 
+function learningTile(i) {
+    const total = workshops[i].turns.length;
+    const records = workshopProgress.runs[i]?.records;
+    const done = Array.isArray(records) ? records.slice(0, total).filter(record => ['correct', 'shown'].includes(record?.status)).length : 0;
+    const state = workshopFinished(i) ? 'complete' : Array.isArray(records) ? 'in-progress' : 'not-started';
+    const status = {
+        complete: ['✓', t('Complete')], 'in-progress': ['◐', t('In progress')], 'not-started': ['○', t('Not started')],
+    }[state];
+    return `<button type="button" class="unit" data-action="unit" data-value="${i}" data-lesson-state="${state}">
+        <span class="num" aria-hidden="true">${unitNumber(i)}</span>
+        <span class="details"><span class="unit-name">${units[i].title}</span>
+            <span class="unit-status"><span class="unit-badge"><span aria-hidden="true">${status[0]}</span> ${status[1]}</span>
+                ${state === 'in-progress' ? `<small>${t`${done} of ${total} steps done`}</small>` : ''}</span>
+            ${state === 'in-progress' ? `<span class="unit-meter" aria-hidden="true" style="--steps-done:${done / total * 100}%"></span>` : ''}
+        </span>
+        <span class="unit-arrow" aria-hidden="true">↗</span></button>`;
+}
+
 function home() {
     pageRoute = ['home', ''];
     session = undefined;
@@ -188,14 +216,7 @@ function home() {
         <section aria-labelledby="path-title">
             <h2 id="path-title">${t`Learning path`}</h2>
             <div class="course-index">
-            ${unitOrder.map(i => {
-                const finished = workshopFinished(i);
-                const started = workshopProgress.runs[i]?.records?.length;
-                return `<button type="button" class="unit" data-action="unit" data-value="${i}">
-                    <span class="num" aria-hidden="true">${unitNumber(i)}</span><span class="details">${units[i].title}
-                    <small>${finished ? t('Complete · Review') : started ? t('In progress · Resume') : workshops[i].title}</small></span>
-                    <span class="unit-arrow" aria-hidden="true">↗</span></button>`;
-            }).join('')}
+            ${unitOrder.map(learningTile).join('')}
             ${button(`<span class="num" aria-hidden="true">★</span><span class="details">${t("Practice and exams")}<small>${t("Test your approach on other problems")}</small></span><span class="unit-arrow" aria-hidden="true">↗</span>`, 'final', '', 'unit capstone')}
             </div>
         </section>
@@ -204,8 +225,8 @@ function home() {
     showValModel();
 }
 
-function practiceCards(questions, step = t('Practice')) {
-    return questions.map(question => ({ ...question, step }));
+function practiceCards(questions, step) {
+    return questions.map(question => ({ ...question, step: step ?? question.step ?? t('Practice') }));
 }
 
 function practiceMenu() {
@@ -321,22 +342,10 @@ function options(question, multiple = false) {
             aria-pressed="false">${choice}</button>`).join('')}</div>`;
 }
 
-function formulaFields(question) {
-    return `<p class="formula-output"><var>${escapeTutor(question.symbol)}</var> ${escapeTutor(question.label)} (${escapeTutor(question.unit)})</p>
-                <p class="formula">${question.symbol} = ${question.expression}</p>
-                <fieldset class="formula-fields"><legend>${t`Enter the values from the problem`}</legend>
-                    <div class="station-grid">${question.inputs.map(([symbol, label, unit, expected], i) =>
-                        `<label>${symbol} · ${label}${unit ? ` (${unit})` : ''}
-                            <input class="study-number" type="text" inputmode="${expected < 0 ? 'text' : 'decimal'}"
-                                data-formula-input="${i}">
-                        </label>`).join('')}</div>
-                </fieldset>`;
-}
-
 function interaction(question) {
     switch (question.type) {
         case 'formula':
-            return formulaFields(question);
+            return `<div class="practice-formula">${paperInputs(question)}</div>`;
         case 'number':
             return `<label class="number-answer">${t`Answer ${question.unit ? `(${question.unit})` : ''}`}
                 <input id="number-answer" class="study-number" type="text" inputmode="decimal"></label>`;
@@ -388,6 +397,7 @@ function render() {
     }
     const question = session.queue[session.cursor];
     const exam = session.mode === 'exam';
+    const refresher = practiceReview[questionMethods.get(question.key)];
     const position = session.cursor + 1;
     answer = null;
     showGraphAnswer = null;
@@ -410,9 +420,10 @@ function render() {
         ${question.type === 'fbd' || question.type === 'stress' ? '' : practiceDrawingPanel(question)}
         ${exam ? '' : questionMethod(question)}
         ${interaction(question)}
-        <div id="feedback" aria-live="polite"></div>
+        <div id="feedback" aria-live="polite" tabindex="-1"></div>
         <div class="toolbar">
             ${exam ? '' : button(t('Hint'), 'hint')}
+            ${exam || !refresher ? '' : button(t('Quick refresher'), 'refresh', refresher)}
             ${exam ? button(t('Skip question'), 'skip') : ''}
             ${button(exam ? t('Record answer') : question.type === 'formula' ? t('Calculate') : t('Check answer'), 'check', '', 'primary')}
         </div>
@@ -564,13 +575,26 @@ function formulaResult(question, values) {
 }
 
 function formulaSubstitution(question, values) {
-    const display = value => numberText(value).replace(/^-/, '−');
-    const substitution = question.substitute(...values.map(display));
-    const result = question.calculate(...values);
-    return `<p class="formula formula-result">
-        <span>${question.symbol} = ${substitution}</span>
-        <strong>= ${display(result)} ${question.unit}</strong>
-    </p>`;
+    return `<div class="formula-result lesson-paper-work">${workedCalculation(question, values)}</div>`;
+}
+
+function practiceAnswerText(question, answer) {
+    if (question.type === 'number') return `${numberText(answer)}${question.unit ? ` ${question.unit}` : ''}`;
+    if (question.type === 'stress') return 'ABCD'[answer];
+    if (question.type === 'fbd') return answer.map(i => question.opts[i]).join(' · ');
+    if (question.type === 'match') return answer.map((choice, i) => `${question.pairs[i][0]} → ${question.pairs[choice][1]}`).join(' · ');
+    return question.opts?.[answer];
+}
+
+function practiceAnswerReview(result) {
+    const { question, input, correct } = result;
+    const expected = practiceAnswerText(question, question.answer);
+    if (!expected) return '';
+    const submitted = !correct && input != null ? practiceAnswerText(question, input) : '';
+    return `<dl class="practice-answers">
+        ${submitted ? `<div><dt>${t('Your answer')}</dt><dd>${escapeTutor(submitted)}</dd></div>` : ''}
+        <div><dt>${t('Correct answer')}</dt><dd>${escapeTutor(expected)}</dd></div>
+    </dl>`;
 }
 
 function checkAnswer(skipped = false) {
@@ -602,7 +626,7 @@ function renderStudyFeedback(result, calculation) {
     if (!correct && method) method.open = true;
 
     const count = session.results.size;
-    let message = correct ? t('Val approves. A rare institutional success.') : valLines[(count - 1) % valLines.length];
+    let message = correct ? t('You can use this approach on similar problems.') : valLines[(count - 1) % valLines.length];
     if (!correct && count % 5 === 0) {
         const [story, source] = stories[(count / 5 - 1) % stories.length];
         message = `${story} <a href="${source}" target="_blank" rel="noopener noreferrer">${t`Case study`}</a>`;
@@ -611,6 +635,7 @@ function renderStudyFeedback(result, calculation) {
     feedback.innerHTML = `${calculation}<div class="feedback ${correct ? '' : 'bad'}">
         <div class="feedback-val val-pop">${valPortrait(correct ? 'cheer' : 'think')}</div>
         <div><p><strong>${correct ? t('Structurally sound!') : t('Here’s how to work it out')}</strong></p>
+        ${practiceAnswerReview(result)}${question.work ? list(question.work, 'ol') : ''}
         <p>${question.explain}</p><small>${message}</small></div></div>${practiceDrawingPanel(question, true)}${refresherOffer(result.suggested, 'data-action')}`;
     if (showGraphAnswer) {
         showGraphAnswer();
@@ -621,7 +646,7 @@ function renderStudyFeedback(result, calculation) {
     check.disabled = false;
     check.dataset.action = 'next';
     check.textContent = t('Continue');
-    check.focus();
+    feedback.focus();
 }
 
 function studySheetContent(i) {
@@ -663,12 +688,14 @@ function finish() {
         <h1>${t`${title} complete`}</h1>
         <p>${t`${correct} of ${results.length} correct · ${correct * 10} XP earned${skipped ? t` · ${skipped} skipped` : ''}`}</p>
         ${mode === 'exam' ? `<section class="exam-solutions"><h2>${t`Worked solutions`}</h2>
-            ${results.map(({ question, correct, skipped }) => `<details>
+            ${results.map(result => { const { question, correct, skipped } = result; return `<details>
                 <summary>${correct ? '✓' : skipped ? t('Skipped') : '↻'} · ${question.prompt}</summary>
+                ${question.setup ? `<p>${question.setup}</p>` : ''}${practiceAnswerReview(result)}
                 ${practiceDrawingPanel(question, true)}
+                ${question.work ? list(question.work, 'ol') : ''}
                 <p>${question.explain}</p>${question.type === 'graph' ? graphSolution(question) : ''}
                 ${methodPanel(methods[questionMethods.get(question.key)])}
-                </details>`).join('')}</section>` : ''}
+                </details>`; }).join('')}</section>` : ''}
         <div class="toolbar">${button(t('Learning path'), 'home')}${button(t('Revisit mistakes'), 'weak')}
             ${button(unit == null ? t('Cumulative study guide') : t('Study sheet'),
                 unit == null ? 'sheet-all' : 'sheet', unit ?? '', 'primary')}</div>
@@ -688,9 +715,13 @@ const actions = {
         comparison.querySelector('.restraint-detail').innerHTML = restraintComparison(key);
     },
     hint: () => {
-        document.getElementById('feedback').innerHTML =
+        const question = session.queue[session.cursor];
+        const hint = question.hint || methods[questionMethods.get(question.key)]?.steps[0];
+        const feedback = document.getElementById('feedback');
+        feedback.innerHTML =
             `<div class="feedback"><div class="feedback-val val-pop">${valPortrait('think')}</div>
-                <p>${session.queue[session.cursor].hint || t('Sketch the load, label units, and identify the equation that governs the result.')}</p></div>`;
+                <p>${hint || t('Sketch the load, label units, and identify the equation that governs the result.')}</p></div>`;
+        feedback.focus();
     },
     check: () => checkAnswer(), skip: () => checkAnswer(true), next, back: () => moveSlide(-1), print: () => window.print(),
 };
