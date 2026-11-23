@@ -70,18 +70,19 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
             : chord + (shape === 'positive' ? bend : -bend);
         return `Q${x(midpoint)} ${y(control)} ${end}`;
     };
-    const path = (ordinates, segments, exact) => ordinates.map((value, i) => {
-        if (value === null) return '';
-        const previous = ordinates[i - 1];
-        if (previous == null) return `M${x(question.stations[i].x)} ${y(value)}`;
-        return segment(value, previous, i, segments[i - 1], exact);
-    }).join(' ');
+    const segmentPath = (ordinates, i, shape, exact = false) => {
+        const start = ordinates[i], end = ordinates[i + 1];
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return '';
+        return `M${x(question.stations[i].x)} ${y(start)}${segment(end, start, i + 1, shape, exact)}`;
+    };
+    const requiresShape = i => i < question.shapes.length && !shapes[i];
+    const learnerSegments = values.slice(1).map((_, i) => segmentPath(values, i, shapes[i]));
     const grid = Array.from({ length: 9 }, (_, i) => scale * (i - 4) / 4).map(value => `
         <path class="${value === 0 ? 'axis' : 'grid-line'}" d="M55 ${y(value)}H485"/>
         <text x="5" y="${y(value) + 4}">${numberText(value)}</text>`).join('');
     const positions = [...new Set(question.stations.map(station => station.x))];
-    const shapeTargets = !showAnswer && selected === -1 && values.every(Number.isFinite) ? shapes.map((shape, i) =>
-        `<path class="graph-shape-hit" data-shape-hit="${i}" d="M${x(question.stations[i].x)} ${y(values[i])}${segment(values[i + 1], values[i], i + 1, shape, false)}"/>`).join('') : '';
+    const shapeTargets = !showAnswer && selected === -1 && values.every(Number.isFinite) ? question.shapes.map((_, i) =>
+        `<path class="graph-shape-hit" data-shape-hit="${i}" d="${learnerSegments[i]}"/>`).join('') : '';
     return `<text x="55" y="15">${question.kind} (${units}) · + ${moment ? t('down') : t('up')}</text>
         ${grid}
         ${positions.map(position => `<path class="grid-line" d="M${x(position)} 28V230"/>`).join('')}
@@ -89,11 +90,12 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
             `<text x="${x(position)}" y="244" text-anchor="middle">${numberText(position)}</text>`).join('')}
         <text x="515" y="244" text-anchor="end">m</text>
         ${selected >= 0 ? `<path class="active-station" d="M${x(question.stations[selected].x)} 28V236"/>` : ''}
-        <path class="learner-curve" d="${path(values, shapes, false)}"/>
+        <path class="learner-curve" d="${learnerSegments.filter((_, i) => !requiresShape(i)).join(' ')}"/>
+        <path class="pending-curve" d="${learnerSegments.filter((_, i) => requiresShape(i)).join(' ')}"/>
         ${values.map((value, i) => value === null ? '' :
             `<circle class="learner-ordinate" cx="${x(question.stations[i].x)}" cy="${y(value)}" r="4"/>`).join('')}
         ${shapeTargets}
-        ${showAnswer ? `<path class="solution-curve" d="${path(question.answer, question.shapes, true)}"/>
+        ${showAnswer ? `<path class="solution-curve" d="${question.answer.slice(1).map((_, i) => segmentPath(question.answer, i, question.shapes[i], true)).join(' ')}"/>
             <text x="485" y="258" text-anchor="end">${t`Dashed line · solution`}</text>` :
         `<g class="plot-preview" visibility="hidden" aria-hidden="true">
             <path class="preview-height"/><path class="preview-segment"/><circle r="6"/>
@@ -134,7 +136,7 @@ function graphMarkup(question) {
                 `<label>${stationLabel(question.stations, i)}<input class="study-number" type="text" inputmode="decimal" data-station="${i}"></label>`).join('')}</div>
         </fieldset>
         ${question.shapes.length ? `<fieldset class="diagram-fields"><legend>${t`Segment geometry`}</legend>
-            <p>${t`After placing the points, tap a line or its button to cycle through shapes. A positive bow curves downward from the straight line between the points.`}</p>
+            <p>${t('Dotted segments still need a shape. After placing all the points, tap a segment or its button to cycle through shapes, or use the dropdown. A positive bow curves downward from the straight line between the points.')}</p>
             <div class="graph-station-buttons" role="group" aria-label="${t`Cycle segment shapes`}">
             ${question.shapes.map((_, i) => `<button type="button" data-shape-cycle="${i}"></button>`).join('')}</div>
             <div class="station-grid">
@@ -168,8 +170,9 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
     const ordinates = [...new Set(question.answer.map(value => Number(fmt(value))))];
     const availableHeights = new Set(Array.from(heights.options, option => option.value));
     const stationStatus = () => {
-        placement.textContent = selected < 0 ? t('All stations placed. Select any station to move its point.') :
-            t`Placing ${stationLabel(question.stations, selected)}.`;
+        if (selected >= 0) placement.textContent = t`Placing ${stationLabel(question.stations, selected)}.`;
+        else placement.textContent = answer.shapes.includes(null) ? t('All stations placed. Choose a shape for each dotted segment.') :
+            t('All stations placed. Select any station to move its point.');
     };
     const updateHeightChoice = value => {
         const option = studyInputText(value);
@@ -185,7 +188,10 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         });
         cycles.forEach((button, i) => {
             const range = `${numberText(question.stations[i].x)}–${numberText(question.stations[i + 1].x)} m`;
-            button.textContent = `${range} · ${shapeLabels[answer.shapes[i]] ?? t('Choose shape')}`;
+            const shape = answer.shapes[i];
+            button.textContent = `${range} · ${shapeLabels[shape] ?? t('Choose shape')}`;
+            button.toggleAttribute('data-shape-pending', !shape);
+            segments[i].toggleAttribute('data-shape-pending', !shape);
         });
         clear.disabled = answer.values.every(value => value === null) && answer.shapes.every(shape => shape === null);
         height.disabled = showAnswer || selected < 0;
