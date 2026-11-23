@@ -7,8 +7,13 @@ const repeatScenarios = [
 
 const repeatVersions = new Map();
 const shearVersions = new Map();
+const sectionVersions = new Map();
 
 function workshopVersion(index, attempt = 1, run) {
+    if (index === 6 && (!run?.finished || run.sectionRevision)) {
+        if (!sectionVersions.has(attempt)) sectionVersions.set(attempt, sectionLessonVersion(attempt));
+        return sectionVersions.get(attempt);
+    }
     if (Object.hasOwn(beamLabTitles, index)) {
         const key = `${index}/${attempt}`;
         if (!repeatVersions.has(key)) repeatVersions.set(key, beamLabDefinition(index, attempt));

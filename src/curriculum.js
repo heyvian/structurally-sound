@@ -232,7 +232,7 @@ const extra = [
         N(t('A rectangle b=100 mm, h=200 mm. Find Ix in millions of mm⁴.'),100*200**3/12/1e6,localizedEquation('100×200³/12=66.667×10⁶ mm⁴.'),t('Depth is cubed.'),'10⁶ mm⁴'),
         N(t('A T-section has a 100×20 mm flange over a centered 20×80 mm web. Centroid measured from bottom?'),(2000*90+1600*40)/3600,localizedEquation('(2000×90+1600×40)/3600=67.78 mm.'),t('Use non-overlapping rectangles.'),'mm'),
         N(t('A T has a 100×20 mm flange over a centred 20×80 mm web. Its centroid is 67.778 mm above the bottom. Find Iₓ in millions of mm⁴.'),(100*20**3/12+2000*(90-67.7777777778)**2+20*80**3/12+1600*(40-67.7777777778)**2)/1e6,t('Add I + Ad² for the flange and web. The result is about 3.142×10⁶ mm⁴. Keep full precision until the final answer.'),t('Use each distance to combined neutral axis.'),'10⁶ mm⁴'),
-        Q(t('For a non-symmetric section, which c governs maximum absolute bending stress?'),[t('Distance to farther extreme fibre'),t('Distance to centroid from any origin'),t('Half the width')],0,t('S=I/c; the larger c produces the smaller section modulus.')),
+        Q(t('A T section bends about its horizontal centroidal axis. Which value of c gives the larger absolute bending stress?'),[t('Distance to farther extreme fibre'),t('Distance to centroid from any origin'),t('Half the width')],0,t('S=I/c; the larger c produces the smaller section modulus.')),
     ],
     [
         N(t('A pin-ended square steel post measures 60 × 60 mm. Find centroidal I in mm⁴.'),60**4/12,localizedEquation('I = 60⁴/12 = 1,080,000 mm⁴.'),t('Rectangle formula.'),'mm⁴'),
@@ -301,6 +301,8 @@ function steelQ(kind, requirement, rows = steel) {
     };
 }
 units[6].q.push(steelQ('S', 320, steelSmall), steelQ('I', 215), steelQ('S', 1400));
+units[6].q.push(sectionCentroidPractice('x', sectionPracticeSymmetric, 'i'),
+    sectionCentroidPractice('x', sectionPracticeAngle, 'angle'), sectionCentroidPractice('y', sectionPracticeAngle, 'angle'));
 units[5].q.push(steelQ('S', 1200));
 
 

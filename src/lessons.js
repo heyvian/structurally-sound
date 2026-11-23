@@ -231,9 +231,11 @@ const lessonPlans = [
                 localizedEquation('S = Iₓ/c = 666.67×10³ mm³.'), t('The outer fibre of this symmetric rectangle is half the depth from the centroid.'), '10³ mm³'),
             steelQ('S', 320, steelSmall),
         ],
-        quick: [t('Use an area-weighted average for the centroid.'), t('Sum each local I and its Ad² offset about the full section’s axis.'), t('Use S = I/c and compare the correct table column and units before comparing mass.')],
+        quick: [t('Find any symmetry line, then split the section into non-overlapping rectangles.'),
+            t('Record A, x and y for each rectangle. Use each coordinate’s area-weighted average to find the combined centroid.'),
+            t('Sum each local I and its Ad² offset about the full section’s axis.'), t('Use S = I/c and compare the correct table column and units before comparing mass.')],
         pitfalls: [t('Do not double-count the flange and web intersection.'), t('Iₓ [mm⁴] and Sₓ [mm³] are distinct. Check table powers of ten.')],
-        sheet: t('ȳ = ΣAy/ΣA, Iₓ = Σ(Ic + Ad²), Sₓ = Iₓ/c. For a rectangle Ic = bh³/12. Sketch the datum and x-axis.'),
+        sheet: t('x̄ = ΣAx/ΣA, ȳ = ΣAy/ΣA, Iₓ = Σ(Ic + Ad²), Sₓ = Iₓ/c. For a rectangle Ic = bh³/12. Mark the left and bottom datums.'),
     },
     {
         goal: t('Estimate elastic buckling and bending deflection and explain what changes their magnitude.'),

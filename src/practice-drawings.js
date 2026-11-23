@@ -241,13 +241,17 @@ function conceptPlate(id) {
 }
 
 function practiceDrawing(question, solved = false) {
+    if (question.sectionCase) return sectionPracticeFigure(question, solved);
     if (question.type === 'fbd') return fbdDrawing(question, solved ? question.answer : undefined, solved);
     if (question.shearSegment) return shearSegmentFigure(question.shearSegment, { base: solved, crossing: solved, area: solved });
     const key = question.key;
     if (practiceRoofAreas[key]) return roofAreaPlate(...practiceRoofAreas[key]);
     if (practiceShearAreas[key]) return shearAreaPlate(...practiceShearAreas[key]);
     if (practiceSections[key]) return rectangleSectionPlate(...practiceSections[key]);
-    if (key === '6-8' || key === '6-9') return teeProgress(key === '6-9' || solved ? 67.778 : undefined);
+    if (key === '6-8' || key === '6-9') {
+        const model = teeSection(20, 80, 100, 20);
+        return sectionPlate(model, 'tee', key === '6-9' || solved ? { cy: model.cy, y0: 40, y1: 90 } : {}).markup;
+    }
     if (key === 'formula-8') return apexJointPlate(30, 30, solved);
     if (['guided-8-0', '8-13', 'truss-exam-1'].includes(key)) return apexJointPlate(40, 45, solved);
     if (key === '8-1') return addSvgLayer(vectorPlate(solved ? 10 : null, 30), '<text x="339" y="116">5 kN</text>');

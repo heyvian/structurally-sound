@@ -248,12 +248,12 @@ const methods = {
     },
     centroid: {
         title: t('Find the area-weighted centroid'),
-        formula: 'ȳ = Σ(Aᵢyᵢ) ÷ ΣAᵢ',
-        steps: [t('Split the shape into non-overlapping pieces and choose one datum.'),
-            t('Find the area and centroid height of each piece from that datum.'),
-            t('Multiply each area by its height, add the products, and divide by total area.')],
+        formula: 'x̄ = Σ(Aᵢxᵢ) ÷ ΣAᵢ · ȳ = Σ(Aᵢyᵢ) ÷ ΣAᵢ',
+        steps: [t('Check for symmetry. The centroid lies on each mirror line. If a coordinate is still unknown, split the shape into non-overlapping rectangles.'),
+            t('Measure every x coordinate from the same left datum and every y coordinate from the same bottom datum.'),
+            t('For one coordinate at a time, multiply each area by that centre coordinate, add the products, and divide by total area.')],
         example: t('Areas 40 and 60 mm² at heights 10 and 30 mm give ȳ = (40 × 10 + 60 × 30)/100 = 22 mm.'),
-        check: t('Larger pieces pull the centroid closer to themselves.'),
+        check: t('Larger pieces pull the centroid closer to themselves. An L section can balance at a point in its open corner.'),
     },
     parallelAxis: {
         title: t('Move each piece’s inertia to the combined axis'),

@@ -93,6 +93,7 @@ function progressiveLessonDrawing(workshop, run, i) {
     const index = workshop.index ?? workshops.indexOf(workshop);
     const turn = workshop.turns[i];
     const record = run.records[i] || {};
+    if (turn.section) return sectionLessonDrawing(workshop, run, i);
     if (workshop.beam) return beamLabDrawing(workshop, run, i);
     if (turn.shearSegment) return workshopFigure(lessonShearSegment(turn, record.status, diagramDraft(record.draft, record.draftLocale).value));
     if (turn.type === 'fbd') {
@@ -175,9 +176,14 @@ function diagramValue({ value, negative }, unit) {
     return Number.isFinite(value) ? `${numberText(value)}${unit ? ` ${unit}` : ''}` : (negative ? '−' : '—');
 }
 
-function updateLessonDrawing(root, workshop, i, raw) {
+function updateLessonDrawing(root, workshop, i, raw, run) {
     const draft = diagramDraft(raw, locale);
     const turn = workshop.turns[i];
+    if (turn.section) {
+        const svg = root.querySelector('[data-lesson-live] svg');
+        if (svg) svg.outerHTML = sectionLessonDrawing(workshop, run, i).markup;
+        return;
+    }
     const label = root.querySelector('[data-lesson-value]');
     if (label) label.textContent = diagramValue(draft, turn.unit);
     if (turn.shearSegment) {

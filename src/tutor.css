@@ -547,3 +547,28 @@
 .beam-lab-answers { margin: 10px 0 0; padding: 10px; background: var(--ice); }
 .beam-lab-answers div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 15px; }
 .beam-lab-answers dd { margin: 0; font-weight: 700; }
+
+.section-piece { fill: #dce7f3; stroke: var(--ink); stroke-width: 1.8; }
+.section-piece-1 { fill: #eadbd1; }
+.section-piece-active { fill: #f4cb99; stroke: #934015; stroke-width: 2; }
+.section-measure, .section-datum, .section-symmetry, .section-local-axis,
+.section-combined-axis, .section-draft-axis, .section-seam { fill: none; }
+.section-measure { stroke: #59646c; stroke-width: 1; }
+.section-datum { stroke: #334048; stroke-width: 1.5; stroke-dasharray: 5 3; }
+.section-symmetry, .section-local-axis { stroke: #355872; stroke-dasharray: 3 3; }
+.section-symmetry { opacity: .72; }
+.section-combined-axis { stroke: #2945a7; stroke-width: 1.6; stroke-dasharray: 6 3; }
+.section-draft-axis { stroke: #a34b21; stroke-width: 1.6; stroke-dasharray: 2 4; }
+.section-seam { stroke: #fffefa; stroke-width: 1.7; stroke-dasharray: 3 3; }
+.section-axis-text { paint-order: stroke; stroke: #f3f6f9; stroke-width: 3; }
+.section-centre-mark { fill: #fffefa; stroke: #355872; stroke-width: 1.5; }
+.section-centroid-mark { fill: #f6d4a4; stroke: #2945a7; stroke-width: 2; }
+.section-piece-label { font-weight: 800; }
+.section-ledger { width: 100%; margin: 8px 0 0; font-size: 12px; }
+.section-ledger th, .section-ledger td { padding: 5px 6px; }
+.section-ledger td { text-align: right; font-variant-numeric: tabular-nums; }
+.section-ledger > thead th:not(:first-child) { text-align: right; }
+.section-ledger small { display: block; font-weight: normal; }
+.section-ledger-active { background: #f4dfc2; }
+.section-totals { display: flex; flex-wrap: wrap; gap: 3px 12px; margin: 5px 0 0; color: var(--blue); font: 700 12px/1.4 var(--mono); }
+.section-totals:empty { display: none; }

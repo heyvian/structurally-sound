@@ -27,6 +27,21 @@ function saveWorkshops() {
 
 function workshopRun(i) {
     const saved = workshopProgress.runs[i];
+    if (i === 6 && !saved?.finished && !saved?.sectionRevision) {
+        const attempt = attemptNumber(saved);
+        const records = [];
+        workshopVersion(i, attempt).turns.forEach((turn, index) => {
+            if (turn.legacy === undefined) return;
+            const record = saved?.records?.[turn.legacy];
+            if (record?.status || record?.draft) records[index] = record;
+        });
+        const previous = Array.isArray(saved?.records) ? saved.records : [];
+        const priorCorrect = previous.filter(record => record?.status === 'correct').length -
+            records.filter(record => record?.status === 'correct').length;
+        const sectionProgressFloor = previous.length ? previous.filter(record => record?.status).length /
+            workshopVersion(i, attempt, { finished: true }).turns.length : 0;
+        return workshopProgress.runs[i] = { cursor: 0, records, attempt, sectionRevision: true, priorCorrect, sectionProgressFloor };
+    }
     if (saved && Array.isArray(saved.records) && Number.isInteger(saved.cursor) &&
         saved.cursor >= 0 && saved.cursor <= workshopVersion(i, attemptNumber(saved), saved).turns.length) return saved;
     return workshopProgress.runs[i] = { cursor: 0, records: [] };
@@ -51,7 +66,7 @@ function totalStars() {
 function workshopXp() {
     const runs = [...workshops.keys(), ...Object.keys(beamLabTitles)].flatMap(i => [...archivedRuns(i), workshopProgress.runs[i]]);
     return runs.reduce((sum, run) => sum +
-        (Array.isArray(run?.records) ? run.records.filter(record => record?.status === 'correct').length * 10 : 0), 0);
+        (Array.isArray(run?.records) ? (run.records.filter(record => record?.status === 'correct').length + (run.priorCorrect ?? 0)) * 10 : 0), 0);
 }
 
 function nextWorkshop() {
@@ -101,7 +116,7 @@ function judgeTurn(turn, input) {
         answer: `${studyInputText(value).replace(/^-/, '−')}${turn.unit ? ' ' + turn.unit : ''}`,
         message: correct ? turn.solution : known?.[1] || (reversed
             ? t('Your magnitude is right. Check which direction you called positive and which way this term acts.')
-            : t('Try that again. Keep the givens and their units beside your equation, and follow the steps one at a time.')),
+            : (turn.section && turn.hint) || t('Try that again. Keep the givens and their units beside your equation, and follow the steps one at a time.')),
     };
 }
 
@@ -203,12 +218,12 @@ function tutorDrawing(workshop, run, i, interactive, current) {
         pastSketch = workshop.turns.slice(from, i).findLast((previous, j) => previous.type === 'sketch' && run.records[from + j]?.status);
     }
     return `<div class="${current ? 'tutor-drawing' : 'lesson-record-drawing'}">
-        <div class="tutor-drawing-title"><span>${turn.drawing ? t('Drawing') : workshop.drawing.caption}</span>${hotspots ? `<span>${t("Tap a point")}</span>` : ''}</div>
+        <div class="tutor-drawing-title"><span>${drawing.title ?? (turn.drawing ? t('Drawing') : workshop.drawing.caption)}</span>${hotspots ? `<span>${t("Tap a point")}</span>` : ''}</div>
         ${turn.type === 'fbd' && !record?.status ? `<figure class="lesson-given"><figcaption>${t('Given structure')}</figcaption>${fbdDrawing(turn, null, false)}</figure>` : ''}
         <div class="tutor-drawing-frame" ${current ? 'data-lesson-live' : ''}>${drawing.markup}${hotspots}${marker}</div>
-        ${current ? drawing.tools || '' : ''}
+        ${current || turn.section ? drawing.tools || '' : ''}
         ${drawing.label ? `<p>${drawing.label}</p>` : ''}
-        ${lessonValues(workshop, run, i, current)}
+        ${workshop.sectionLesson ? '' : lessonValues(workshop, run, i, current)}
         ${current && (drawing.progress || pastSketch) ? `<details class="lesson-drawing-progress" open><summary>${t('Drawing so far')}</summary>
             ${drawing.progress || graphSolution(pastSketch)}</details>` : ''}
     </div>`;
@@ -299,6 +314,7 @@ function renderTutor(index, focus = 'title') {
     const attempt = attemptNumber(run);
     const workshop = workshopVersion(index, attempt, run);
     const complete = run.cursor === workshop.turns.length;
+    const redoLabel = index === 6 && !workshop.sectionLesson ? t('Start the expanded lesson') : t('Redo with new problems');
     const title = units[workshop.beam ? 4 : index].title;
     const following = workshop.beam ? undefined : unitOrder[unitOrder.indexOf(index) + 1];
     app.innerHTML = `<section class="tutor-session">
@@ -308,7 +324,7 @@ function renderTutor(index, focus = 'title') {
             ${workshopStars(index) ? `<div class="tutor-attempts">
                 <span class="earned-stars">${starCount(workshopStars(index))}</span>
                 <p>${t`Attempt ${attempt}`}</p>
-                ${reviewing ? button(t('Current attempt'), 'unit', index) : complete ? button(t('Redo with new problems'), 'redo-workshop', index, 'primary') : ''}
+                ${reviewing ? button(t('Current attempt'), 'unit', index) : complete ? button(redoLabel, 'redo-workshop', index, 'primary') : ''}
                 ${index === 4 && complete ? button(refreshers['zero-shear'].title, 'refresh', 'zero-shear') : ''}
                 ${previous.length ? `<details class="tutor-attempt-list"><summary>${t('Past attempts')}</summary>
                     ${previous.slice().reverse().map(saved => {
@@ -326,7 +342,7 @@ function renderTutor(index, focus = 'title') {
             ${reviewing ? '' : `<p class="attempt-reward"><span aria-hidden="true">★</span> ${t('You earned a star for Val!')}</p>`}<p>${workshop.outcome}</p>
             <div class="toolbar"><button data-tutor="review" type="button">${t`Review our conversation`}</button>
                 <button data-tutor="print-workshop" type="button">${t('Print lesson')}</button>
-                ${reviewing ? button(t('Current attempt'), 'unit', index) : button(t('Redo with new problems'), 'redo-workshop', index, 'primary')}
+                ${reviewing ? button(t('Current attempt'), 'unit', index) : button(redoLabel, 'redo-workshop', index, 'primary')}
                 ${workshop.beam ? button(index === 'beam-a' ? beamLabTitles['beam-b'] : t('Independent beam practice'), 'unit',
                     index === 'beam-a' ? 'beam-b' : 'beam-practice', 'primary') : button(t('Try practice questions'), 'practice', index)}
                 ${workshop.beam ? '' : following === undefined ? button(t('Practice exams'), 'final', '', 'primary') :
@@ -443,7 +459,7 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         input.addEventListener('input', () => {
             record.draft = input.value;
             record.draftLocale = locale;
-            updateLessonDrawing(root, workshop, run.cursor, input.value);
+            updateLessonDrawing(root, workshop, run.cursor, input.value, run);
             if (workshop.beam && turn.labPlot) {
                 const value = parseStudyNumber(input.value);
                 if (Number.isFinite(value) && value >= 0 && value <= workshop.beam.L) run.guide = value;

@@ -23,9 +23,14 @@ function updateValGold() {
     let total = 0;
     workshops.forEach((workshop, index) => {
         total += workshop.turns.length;
-        const records = workshopProgress.runs[index]?.records;
+        const run = workshopProgress.runs[index];
+        const records = run?.records;
         if (workshopStars(index)) done += workshop.turns.length;
-        else if (Array.isArray(records)) done += records.slice(0, workshop.turns.length).filter(record => record?.status).length;
+        else if (run?.sectionRevision && Array.isArray(records)) {
+            const length = workshopVersion(index, attemptNumber(run), run).turns.length;
+            const completed = records.slice(0, length).filter(record => record?.status).length;
+            done += workshop.turns.length * Math.max(run.sectionProgressFloor ?? 0, completed / length);
+        } else if (Array.isArray(records)) done += records.slice(0, workshop.turns.length).filter(record => record?.status).length;
     });
     document.documentElement.style.setProperty('--val-gold', done / total);
     document.documentElement.style.setProperty('--val-blue-rows', `${100 * (1 - Math.floor(done / total * 21) / 21)}%`);
