@@ -4,7 +4,7 @@ function readWorkshops() {
     try {
         const saved = JSON.parse(localStorage.getItem(workshopStorageKey));
         if (saved?.runs && typeof saved.runs === 'object' && !Array.isArray(saved.runs)) {
-            return { runs: saved.runs, archives: saved.archives || {}, recent: saved.recent, signals: saved.signals || {} };
+            return { runs: saved.runs, archives: saved.archives || {}, recent: saved.recent, signals: saved.signals || {}, beamPractice: saved.beamPractice };
         }
     } catch {
         // A workshop can still run when browser storage is unavailable.
@@ -45,18 +45,18 @@ function workshopStars(i) {
 }
 
 function totalStars() {
-    return workshops.reduce((sum, _, i) => sum + workshopStars(i), 0);
+    return [...workshops.keys(), ...Object.keys(beamLabTitles)].reduce((sum, i) => sum + workshopStars(i), 0);
 }
 
 function workshopXp() {
-    const runs = workshops.flatMap((_, i) => [...archivedRuns(i), workshopProgress.runs[i]]);
+    const runs = [...workshops.keys(), ...Object.keys(beamLabTitles)].flatMap(i => [...archivedRuns(i), workshopProgress.runs[i]]);
     return runs.reduce((sum, run) => sum +
         (Array.isArray(run?.records) ? run.records.filter(record => record?.status === 'correct').length * 10 : 0), 0);
 }
 
 function nextWorkshop() {
     const recent = workshopProgress.recent;
-    if (Number.isInteger(recent) && workshops[recent] && !workshopFinished(recent)) return recent;
+    if ((Number.isInteger(recent) && workshops[recent] || Object.hasOwn(beamLabTitles, recent)) && !workshopFinished(recent)) return recent;
     return unitOrder.find(i => !workshopStars(i)) ?? unitOrder[0];
 }
 
@@ -166,6 +166,7 @@ function lessonStepRecord(workshop, run, i) {
     const feedback = localizedFeedback(turn, run.records[i]);
     return `<section class="lesson-record" data-lesson-step="${i}" tabindex="-1">
         <div class="lesson-record-copy"><p class="tutor-step">${t`Step ${i + 1} of ${workshop.turns.length}`}</p>
+        ${turn.stage ? `<p class="beam-lab-phase">${beamLabStages[turn.stage - 1]}</p>` : ''}
         <h3>${turn.prompt}</h3><p>${turn.intro}</p>
         ${algebraWalkthrough(turn, run.records[i], true)}${recordedCalculation(turn, run.records[i])}
         ${feedback?.answer ? `<p class="lesson-answer">${escapeTutor(feedback.answer)}</p>` : ''}
@@ -205,6 +206,7 @@ function tutorDrawing(workshop, run, i, interactive, current) {
         <div class="tutor-drawing-title"><span>${turn.drawing ? t('Drawing') : workshop.drawing.caption}</span>${hotspots ? `<span>${t("Tap a point")}</span>` : ''}</div>
         ${turn.type === 'fbd' && !record?.status ? `<figure class="lesson-given"><figcaption>${t('Given structure')}</figcaption>${fbdDrawing(turn, null, false)}</figure>` : ''}
         <div class="tutor-drawing-frame" ${current ? 'data-lesson-live' : ''}>${drawing.markup}${hotspots}${marker}</div>
+        ${current ? drawing.tools || '' : ''}
         ${drawing.label ? `<p>${drawing.label}</p>` : ''}
         ${lessonValues(workshop, run, i, current)}
         ${current && (drawing.progress || pastSketch) ? `<details class="lesson-drawing-progress" open><summary>${t('Drawing so far')}</summary>
@@ -266,6 +268,7 @@ function tutorTurn(workshop, run, isRefresher) {
         <section class="tutor-thread" aria-label="${t`Conversation with Val`}">
             <div class="tutor-active">
                 <p class="tutor-step">${t`Step ${run.cursor + 1} of ${workshop.turns.length}`}</p>
+                ${turn.stage ? `<p class="beam-lab-phase">${t`Part ${turn.stage} of ${beamLabStages.length}`} · ${beamLabStages[turn.stage - 1]}</p>` : ''}
                 ${valNote(`<p>${turn.intro}</p>`)}
                 <section class="tutor-problem" aria-labelledby="${isRefresher ? 'refresher-question' : 'workshop-question'}">
                     <p class="tutor-question-label">${t('Your question')}</p>
@@ -296,11 +299,11 @@ function renderTutor(index, focus = 'title') {
     const attempt = attemptNumber(run);
     const workshop = workshopVersion(index, attempt, run);
     const complete = run.cursor === workshop.turns.length;
-    const title = units[index].title;
-    const following = unitOrder[unitOrder.indexOf(index) + 1];
+    const title = units[workshop.beam ? 4 : index].title;
+    const following = workshop.beam ? undefined : unitOrder[unitOrder.indexOf(index) + 1];
     app.innerHTML = `<section class="tutor-session">
         <div class="tutor-session-heading">
-            <div>${button(t('‹ Learning path'), 'home')}<p class="eyebrow">ARCH 600 · ${title}</p>
+            <div>${workshop.beam ? button(`‹ ${title}`, 'unit', 4) : button(t('‹ Learning path'), 'home')}<p class="eyebrow">ARCH 600 · ${title}</p>
                 <h1 tabindex="-1">${workshop.title}</h1></div>
             ${workshopStars(index) ? `<div class="tutor-attempts">
                 <span class="earned-stars">${starCount(workshopStars(index))}</span>
@@ -316,6 +319,7 @@ function renderTutor(index, focus = 'title') {
             </div>` : ''}
             <progress value="${run.cursor}" max="${workshop.turns.length}" aria-label="${t`Workshop steps complete`}"></progress>
         </div>
+        ${index === 4 || workshop.beam ? beamLabNavigation(index) : ''}
         ${tutorHistory(workshop, run)}
         ${complete ? `<article class="tutor-finish" tabindex="-1"><div class="tutor-celebrate val-pop">${valPortrait('cheer')}</div>
             <h2>${reviewing ? t`Reviewing attempt ${attempt}` : t('Workshop complete')}</h2>
@@ -323,8 +327,9 @@ function renderTutor(index, focus = 'title') {
             <div class="toolbar"><button data-tutor="review" type="button">${t`Review our conversation`}</button>
                 <button data-tutor="print-workshop" type="button">${t('Print lesson')}</button>
                 ${reviewing ? button(t('Current attempt'), 'unit', index) : button(t('Redo with new problems'), 'redo-workshop', index, 'primary')}
-                ${button(t('Try practice questions'), 'practice', index)}
-                ${following === undefined ? button(t('Practice exams'), 'final', '', 'primary') :
+                ${workshop.beam ? button(index === 'beam-a' ? beamLabTitles['beam-b'] : t('Independent beam practice'), 'unit',
+                    index === 'beam-a' ? 'beam-b' : 'beam-practice', 'primary') : button(t('Try practice questions'), 'practice', index)}
+                ${workshop.beam ? '' : following === undefined ? button(t('Practice exams'), 'final', '', 'primary') :
                     button(t('Next topic →'), 'unit', following, 'primary')}</div>
         </article>` : tutorTurn(workshop, run, false)}
     </section>`;
@@ -344,7 +349,8 @@ function renderTutor(index, focus = 'title') {
 }
 
 function openWorkshop(index, review = null) {
-    if (!workshops[index]) return;
+    if (index === 'beam-practice') { openBeamPractice(); return; }
+    if (!workshops[index] && !Object.hasOwn(beamLabTitles, index)) return;
     session = undefined;
     activeWorkshop = index;
     archiveAttempt = archivedRuns(index).some(run => attemptNumber(run) === review) ? review : null;
@@ -356,7 +362,7 @@ function openWorkshop(index, review = null) {
 }
 
 function redoWorkshop(index) {
-    if (!workshops[index] || !workshopFinished(index)) return;
+    if (!workshopFinished(index)) return;
     const completed = workshopRun(index);
     workshopProgress.archives[index] = [...archivedRuns(index), completed];
     workshopProgress.runs[index] = { cursor: 0, records: [], attempt: attemptNumber(completed) + 1 };
@@ -364,9 +370,13 @@ function redoWorkshop(index) {
 }
 
 function workshopLink() {
-    const match = /^#workshop-(\d+)(?:\/attempt-(\d+))?$/.exec(location.hash);
-    return match && workshops[Number(match[1])] ? [Number(match[1]), match[2] ? Number(match[2]) : null] : null;
+    const match = /^#workshop-(\d+|beam-a|beam-b|beam-ramp|beam-practice)(?:\/attempt-(\d+))?$/.exec(location.hash);
+    if (!match) return null;
+    const index = workshopKey(match[1]);
+    return workshops[index] || Object.hasOwn(beamLabTitles, index) || index === 'beam-practice' ? [index, match[2] ? Number(match[2]) : null] : null;
 }
+
+const workshopKey = value => /^\d+$/.test(value) ? Number(value) : value;
 
 function closeWorkshopRoute() {
     if (activeWorkshop === null) return;
@@ -434,6 +444,11 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
             record.draft = input.value;
             record.draftLocale = locale;
             updateLessonDrawing(root, workshop, run.cursor, input.value);
+            if (workshop.beam && turn.labPlot) {
+                const value = parseStudyNumber(input.value);
+                if (Number.isFinite(value) && value >= 0 && value <= workshop.beam.L) run.guide = value;
+                refreshBeamLabPlot(root, workshop, run);
+            }
             persist();
         });
         form.addEventListener('submit', event => {
@@ -486,8 +501,22 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         bindGraph(turn, answer => {
             currentSketch = answer;
             check.disabled = !answer;
-        }, { root, draft: record.draft, onDraft: draft => { record.draft = draft; persist(); } });
+        }, { root, draft: record.draft, onDraft: draft => {
+            record.draft = draft;
+            if (workshop.beam) refreshBeamLabPlot(root, workshop, run);
+            persist();
+        } });
     }
+    const board = root.querySelector('[data-active-step]');
+    if (workshop.beam && board) bindBeamLabGuide(board, workshop.beam.L, (value, onShear) => {
+        run.guide = value;
+        if (!record.status && turn.labPlot && onShear) {
+            const input = form.elements['tutor-answer'];
+            const picked = Math.abs(value - turn.expected) < .12 ? turn.expected : value;
+            input.value = studyInputText(Number(fmt(picked)));
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else persist();
+    });
     root.addEventListener('click', event => {
         const control = event.target.closest('[data-tutor]');
         if (!control) return;
@@ -532,6 +561,7 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
                 break;
             case 'next':
                 if (!record?.status) break;
+                delete run.guide;
                 run.cursor++;
                 if (run.cursor === workshop.turns.length) run.finished = true;
                 persist();

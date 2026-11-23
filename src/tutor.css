@@ -492,3 +492,58 @@
 .algebra-work button { margin-top: 6px; min-height: 36px; font-size: 13px; }
 @media (max-width: 420px) { .tutor-active > .algebra-work { margin-left: 0; } }
 @media print { .lesson-print .algebra-equation { font-size: 10pt; } }
+
+.beam-lab-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 10px 0 22px;
+}
+.beam-lab-nav > * {
+    padding: 7px 10px;
+    border: 1px solid var(--blue);
+    background: var(--white);
+    color: var(--blue);
+    font-weight: 700;
+    font-size: 14px;
+}
+.beam-lab-nav [aria-current] { background: var(--blue); color: var(--white); }
+.beam-lab-phase { margin: 2px 0 9px; color: var(--blue); font: 700 13px/1.4 var(--mono); }
+.beam-lab-explore {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px 9px;
+    margin: 8px 0 2px;
+    color: var(--blue);
+    font: 700 12px/1.35 var(--mono);
+}
+.beam-lab-explore input { grid-column: 1; grid-row: 2; width: 100%; accent-color: var(--blue); }
+.beam-lab-explore output { grid-column: 2; grid-row: 2; white-space: nowrap; }
+.beam-lab-plot { touch-action: manipulation; }
+.tutor-board .beam-lab-plot { cursor: crosshair; }
+.beam-lab-plot .beam-lab-row { font-weight: 700; }
+.beam-lab-axis, .beam-lab-grid { stroke: #677380; fill: none; }
+.beam-lab-grid { opacity: .25; stroke-dasharray: 3 4; }
+.beam-lab-load { fill: #ddc7ad65; stroke: #a7462e; }
+.beam-lab-highlight { fill: #edbd8eaa; stroke-width: 2; }
+.beam-lab-support { fill: var(--white); stroke: var(--ink); stroke-width: 1.5; }
+.beam-lab-reaction { fill: none; stroke: #17636a; stroke-width: 2.2; }
+.beam-lab-reaction-label { paint-order: stroke; stroke: #f4f5f8; stroke-width: 2.5px; }
+.beam-lab-resultant { fill: #a7462e; }
+.beam-lab-guide { stroke: #7e5219; stroke-dasharray: 4 4; pointer-events: none; }
+.beam-lab-shear, .beam-lab-moment { fill: none; stroke-width: 2.8; }
+.beam-lab-shear, .beam-lab-dot circle { stroke: var(--blue); }
+.beam-lab-moment { stroke: var(--red); }
+.beam-lab-dot circle { fill: var(--white); stroke-width: 1.6; }
+.beam-lab-area { fill: #678fe565; }
+.beam-lab-negative { fill: #e99d7465; }
+.beam-lab-crossing path { fill: none; stroke: var(--blue); stroke-dasharray: 4 4; }
+.beam-lab-crossing circle { fill: var(--white); stroke: var(--blue); stroke-width: 2; }
+.beam-lab-proposed path, .beam-lab-proposed circle { stroke: #7e5219; }
+.beam-lab-practice .tutor-problem { margin-top: 0; }
+.beam-lab-practice .station-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
+.beam-lab-practice .station-grid > label { min-width: 0; }
+.beam-lab-practice [aria-invalid="true"] { border-color: var(--red); }
+.beam-lab-answers { margin: 10px 0 0; padding: 10px; background: var(--ice); }
+.beam-lab-answers div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 15px; }
+.beam-lab-answers dd { margin: 0; font-weight: 700; }

@@ -9,6 +9,11 @@ const repeatVersions = new Map();
 const shearVersions = new Map();
 
 function workshopVersion(index, attempt = 1, run) {
+    if (Object.hasOwn(beamLabTitles, index)) {
+        const key = `${index}/${attempt}`;
+        if (!repeatVersions.has(key)) repeatVersions.set(key, beamLabDefinition(index, attempt));
+        return repeatVersions.get(key);
+    }
     let workshop = workshops[index];
     if (attempt > 1) {
         const key = `${index}/${attempt}`;

@@ -93,6 +93,7 @@ function progressiveLessonDrawing(workshop, run, i) {
     const index = workshop.index ?? workshops.indexOf(workshop);
     const turn = workshop.turns[i];
     const record = run.records[i] || {};
+    if (workshop.beam) return beamLabDrawing(workshop, run, i);
     if (turn.shearSegment) return workshopFigure(lessonShearSegment(turn, record.status, diagramDraft(record.draft, record.draftLocale).value));
     if (turn.type === 'fbd') {
         return workshopFigure(fbdDrawing(turn, record.status ? turn.answer : record.draft || [], true));
