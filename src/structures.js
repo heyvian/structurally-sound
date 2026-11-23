@@ -61,13 +61,13 @@ function graphQuestion(beam, kind) {
     return {
         type: 'graph', kind, b: beam, stations, shapes,
         answer: stations.map(({ v }) => v),
-        prompt: `Construct the ${moment ? 'bending moment' : 'shear'} diagram.`,
+        prompt: t`Construct the ${moment ? t('bending moment') : 'shear'} diagram.`,
         hint: moment
-            ? 'Use signed area under V. A smooth extremum occurs where V crosses zero.'
-            : 'Start at zero outside the beam. Jump at point forces and slope under distributed loads.',
+            ? t('Use signed area under V. A smooth extremum occurs where V crosses zero.')
+            : t('Start at zero outside the beam. Jump at point forces and slope under distributed loads.'),
         explain: moment
-            ? 'The change in M equals the area under V. Constant V gives a straight segment. Linear V gives a parabola.'
-            : 'An upward point force jumps V up, a downward point force jumps it down, and a uniform downward load decreases V linearly.',
+            ? t('The change in M equals the area under V. Constant V gives a straight segment. Linear V gives a parabola.')
+            : t('An upward point force jumps V up, a downward point force jumps it down, and a uniform downward load decreases V linearly.'),
     };
 }
 
@@ -78,19 +78,19 @@ function beamQs(beam) {
     const loadMoment = RB * arm;
     const withBeam = question => ({ ...question, b: beam });
     return [
-        withBeam(N('Find the signed vertical reaction at B. Upward is positive.', RB,
-            `Take moments about A. Rᵦ × ${fmt(arm)} m = ${fmt(loadMoment)} kN·m, giving Rᵦ = ${fmt(RB)} kN.`,
-            'Replace each distributed load with its resultant at the centre of the loaded length.', 'kN')),
-        withBeam(N('Find the signed vertical reaction at A. Upward is positive.', RA,
-            `Force balance gives Rₐ = ${fmt(total)} − (${fmt(RB)}) = ${fmt(RA)} kN.`,
-            'The sum of upward reactions balances the downward loads.', 'kN')),
+        withBeam(N(t('Find the signed vertical reaction at B. Upward is positive.'), RB,
+            t`Take moments about A. Rᵦ × ${numberText(arm)} m = ${numberText(loadMoment)} kN·m, giving Rᵦ = ${numberText(RB)} kN.`,
+            t('Replace each distributed load with its resultant at the centre of the loaded length.'), 'kN')),
+        withBeam(N(t('Find the signed vertical reaction at A. Upward is positive.'), RA,
+            t`Force balance gives Rₐ = ${numberText(total)} − (${numberText(RB)}) = ${numberText(RA)} kN.`,
+            t('The sum of upward reactions balances the downward loads.'), 'kN')),
         graphQuestion(beam, 'V'),
         graphQuestion(beam, 'M'),
-        withBeam(N('Find the maximum absolute shear.', Vmax,
-            `Check both sides of each force jump. The largest magnitude is ${fmt(Vmax)} kN.`,
-            'Compare positive and negative ordinates by magnitude.', 'kN')),
-        withBeam(N('Find the maximum absolute bending moment.', Mmax,
-            `Check endpoints, force jumps and points where V crosses zero. The largest magnitude is ${fmt(Mmax)} kN·m.`,
-            'Compare the extremes of the moment diagram.', 'kN·m')),
+        withBeam(N(t('Find the maximum absolute shear.'), Vmax,
+            t`Check both sides of each force jump. The largest magnitude is ${numberText(Vmax)} kN.`,
+            t('Compare positive and negative ordinates by magnitude.'), 'kN')),
+        withBeam(N(t('Find the maximum absolute bending moment.'), Mmax,
+            t`Check endpoints, force jumps and points where V crosses zero. The largest magnitude is ${numberText(Mmax)} kN·m.`,
+            t('Compare the extremes of the moment diagram.'), 'kN·m')),
     ];
 }

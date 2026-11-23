@@ -1,15 +1,15 @@
 function stationLabel(stations, index) {
     const station = stations[index];
     let side = '';
-    if (stations[index - 1]?.x === station.x) side = ' · right';
-    else if (stations[index + 1]?.x === station.x) side = ' · left';
-    return `x = ${fmt(station.x)} m${side}`;
+    if (stations[index - 1]?.x === station.x) side = t(' · right');
+    else if (stations[index + 1]?.x === station.x) side = t(' · left');
+    return `x = ${numberText(station.x)} m${side}`;
 }
 
 const shapeLabels = {
-    line: 'Straight',
-    positive: 'Parabola bows toward positive M',
-    negative: 'Parabola bows toward negative M',
+    line: t('Straight'),
+    positive: t('Parabola bows toward positive M'),
+    negative: t('Parabola bows toward negative M'),
 };
 
 function graphScale(question, values) {
@@ -61,15 +61,15 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
     }).join(' ');
     const grid = Array.from({ length: 9 }, (_, i) => scale * (i - 4) / 4).map(value => `
         <path class="${value === 0 ? 'axis' : 'grid-line'}" d="M55 ${y(value)}H485"/>
-        <text x="5" y="${y(value) + 4}">${fmt(value)}</text>`).join('');
+        <text x="5" y="${y(value) + 4}">${numberText(value)}</text>`).join('');
     const positions = [...new Set(question.stations.map(station => station.x))];
     const shapeTargets = !showAnswer && selected === -1 && values.every(Number.isFinite) ? shapes.map((shape, i) =>
         `<path class="graph-shape-hit" data-shape-hit="${i}" d="M${x(question.stations[i].x)} ${y(values[i])}${segment(values[i + 1], values[i], i + 1, shape, false)}"/>`).join('') : '';
-    return `<text x="55" y="15">${question.kind} (${units}) · + ${moment ? 'down' : 'up'}</text>
+    return `<text x="55" y="15">${question.kind} (${units}) · + ${moment ? t('down') : t('up')}</text>
         ${grid}
         ${positions.map(position => `<path class="grid-line" d="M${x(position)} 28V230"/>`).join('')}
         ${positions.filter((position, i) => i === 0 || x(position) - x(positions[i - 1]) >= 31).map(position =>
-            `<text x="${x(position)}" y="244" text-anchor="middle">${fmt(position)}</text>`).join('')}
+            `<text x="${x(position)}" y="244" text-anchor="middle">${numberText(position)}</text>`).join('')}
         <text x="515" y="244" text-anchor="end">m</text>
         ${selected >= 0 ? `<path class="active-station" d="M${x(question.stations[selected].x)} 28V236"/>` : ''}
         <path class="learner-curve" d="${path(values, shapes, false)}"/>
@@ -77,32 +77,32 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
             `<circle class="learner-ordinate" cx="${x(question.stations[i].x)}" cy="${y(value)}" r="4"/>`).join('')}
         ${shapeTargets}
         ${showAnswer ? `<path class="solution-curve" d="${path(question.answer, question.shapes, true)}"/>
-            <text x="485" y="258" text-anchor="end">Dashed line · solution</text>` :
+            <text x="485" y="258" text-anchor="end">${t`Dashed line · solution`}</text>` :
         '<g class="plot-preview" visibility="hidden" aria-hidden="true"><path/><circle r="6"/></g>'}`;
 }
 
 function graphMarkup(question) {
     return `
-        <p id="graph-instructions">${question.kind === 'M' ?
-            'Positive sagging goes below the baseline.' : 'Positive shear goes above the baseline.'}
-            Choose a station, then tap the grid at its height. A mouse previews the snapped point. You can also type exact values below.</p>
-        <div class="graph-station-buttons" role="group" aria-label="Stations to plot">${question.stations.map((_, i) =>
+        <p id="graph-instructions">${t`${question.kind === 'M' ?
+            t('Positive sagging goes below the baseline.') : t('Positive shear goes above the baseline.')}
+            Choose a station, then tap the grid at its height. A mouse previews the snapped point. You can also type exact values below.`}</p>
+        <div class="graph-station-buttons" role="group" aria-label="${t`Stations to plot`}">${question.stations.map((_, i) =>
             `<button type="button" data-plot-station="${i}" aria-pressed="false">${stationLabel(question.stations, i)}</button>`).join('')}</div>
         <svg id="graph-plot" class="diagram graph" viewBox="0 0 520 263" role="img"
-            aria-label="Your diagram sketch" aria-describedby="graph-instructions"></svg>
+            aria-label="${t`Your diagram sketch`}" aria-describedby="graph-instructions"></svg>
         <p class="graph-placement" data-graph-placement></p>
         <p class="graph-announcement" role="status" data-graph-announcement></p>
-        <fieldset class="diagram-fields"><legend>${question.kind === 'M' ? 'Moment ordinates · kN·m' : 'Shear ordinates · kN'}</legend>
+        <fieldset class="diagram-fields"><legend>${question.kind === 'M' ? t('Moment ordinates · kN·m') : t('Shear ordinates · kN')}</legend>
             <div class="station-grid">${question.stations.map((_, i) =>
-                `<label>${stationLabel(question.stations, i)}<input type="number" step="any" inputmode="decimal" data-station="${i}"></label>`).join('')}</div>
+                `<label>${stationLabel(question.stations, i)}<input type="text" inputmode="decimal" data-station="${i}"></label>`).join('')}</div>
         </fieldset>
-        ${question.shapes.length ? `<fieldset class="diagram-fields"><legend>Segment geometry</legend>
-            <p>After placing the points, tap a line or its button to cycle through shapes. A positive bow curves downward from the straight line between the points.</p>
-            <div class="graph-station-buttons" role="group" aria-label="Cycle segment shapes">
+        ${question.shapes.length ? `<fieldset class="diagram-fields"><legend>${t`Segment geometry`}</legend>
+            <p>${t`After placing the points, tap a line or its button to cycle through shapes. A positive bow curves downward from the straight line between the points.`}</p>
+            <div class="graph-station-buttons" role="group" aria-label="${t`Cycle segment shapes`}">
             ${question.shapes.map((_, i) => `<button type="button" data-shape-cycle="${i}"></button>`).join('')}</div>
             <div class="station-grid">
-            ${question.shapes.map((_, i) => `<label>${fmt(question.stations[i].x)}–${fmt(question.stations[i + 1].x)} m
-                <select data-segment="${i}"><option value="">Choose a shape</option>
+            ${question.shapes.map((_, i) => `<label>${numberText(question.stations[i].x)}–${numberText(question.stations[i + 1].x)} m
+                <select data-segment="${i}"><option value="">${t`Choose a shape`}</option>
                 ${Object.entries(shapeLabels).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
                 </select></label>`).join('')}</div></fieldset>` : ''}`;
 }
@@ -124,8 +124,8 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
     const firstEmpty = () => answer.values.findIndex(value => value === null);
     let selected = firstEmpty();
     const stationStatus = () => {
-        placement.textContent = selected < 0 ? 'All stations placed. Select any station to move its point.' :
-            `Placing ${stationLabel(question.stations, selected)}. Height snaps to ${fmt(graphScale(question, answer.values) / 25)} ${units}.`;
+        placement.textContent = selected < 0 ? t('All stations placed. Select any station to move its point.') :
+            t`Placing ${stationLabel(question.stations, selected)}. Height snaps to ${numberText(graphScale(question, answer.values) / 25)} ${units}.`;
     };
     const paint = (showAnswer = false) => {
         plot.classList.toggle('placing-station', !showAnswer && selected >= 0);
@@ -133,11 +133,11 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         stations.forEach((button, i) => {
             button.setAttribute('aria-pressed', selected === i);
             const value = answer.values[i];
-            button.textContent = `${stationLabel(question.stations, i)}${value === null ? '' : ` · ${fmt(value)} ${units}`}`;
+            button.textContent = `${stationLabel(question.stations, i)}${value === null ? '' : ` · ${numberText(value)} ${units}`}`;
         });
         cycles.forEach((button, i) => {
-            const range = `${fmt(question.stations[i].x)}–${fmt(question.stations[i + 1].x)} m`;
-            button.textContent = `${range} · ${shapeLabels[answer.shapes[i]] ?? 'Choose shape'}`;
+            const range = `${numberText(question.stations[i].x)}–${numberText(question.stations[i + 1].x)} m`;
+            button.textContent = `${range} · ${shapeLabels[answer.shapes[i]] ?? t('Choose shape')}`;
         });
         stationStatus();
     };
@@ -147,10 +147,11 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         paint();
     };
     inputs.forEach((input, i) => {
-        input.value = answer.values[i] ?? '';
+        input.value = answer.values[i] === null ? '' : studyInputText(answer.values[i]);
         input.addEventListener('focus', () => { selected = i; paint(); });
         input.addEventListener('input', () => {
-            answer.values[i] = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null;
+            const value = parseStudyNumber(input.value);
+            answer.values[i] = Number.isFinite(value) ? value : null;
             answer.sketched[i] = false;
             if (firstEmpty() === -1) selected = -1;
             update();
@@ -170,7 +171,7 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         answer.shapes[i] = shapeKeys[(shapeKeys.indexOf(answer.shapes[i]) + 1) % shapeKeys.length];
         segments[i].value = answer.shapes[i];
         selected = firstEmpty();
-        announcement.textContent = `Segment from ${stationLabel(question.stations, i)}: ${shapeLabels[answer.shapes[i]]}.`;
+        announcement.textContent = t`Segment from ${stationLabel(question.stations, i)}: ${shapeLabels[answer.shapes[i]]}.`;
         update();
     };
     cycles.forEach((button, i) => button.addEventListener('click', () => cycleShape(i)));
@@ -203,16 +204,16 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         const dot = preview.querySelector('circle');
         dot.setAttribute('cx', x);
         dot.setAttribute('cy', y);
-        placement.textContent = `${stationLabel(question.stations, selected)} · ${fmt(value)} ${units}. Click to place.`;
+        placement.textContent = t`${stationLabel(question.stations, selected)} · ${numberText(value)} ${units}. Click to place.`;
     };
     const sketchAt = event => {
         const hit = event.target.closest('[data-shape-hit]');
         if (hit) { cycleShape(Number(hit.dataset.shapeHit)); return; }
         const value = snappedHeight(event);
         if (value === null) return;
-        announcement.textContent = `${stationLabel(question.stations, selected)} placed at ${fmt(value)} ${units}.`;
+        announcement.textContent = t`${stationLabel(question.stations, selected)} placed at ${numberText(value)} ${units}.`;
         answer.values[selected] = value;
-        inputs[selected].value = fmt(value);
+        inputs[selected].value = studyInputText(value);
         answer.sketched[selected] = true;
         selected = firstEmpty();
         update();
@@ -233,11 +234,11 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
 
 function graphSolution(question, includePlot = true) {
     const units = question.kind === 'M' ? 'kN·m' : 'kN';
-    return `${includePlot ? `<svg class="diagram graph" viewBox="0 0 520 263" role="img" aria-label="Solution diagram">
+    return `${includePlot ? `<svg class="diagram graph" viewBox="0 0 520 263" role="img" aria-label="${t`Solution diagram`}">
             ${graphCanvas(question, question.stations.map(() => null), [], -1, true)}
         </svg>` : ''}
-        <details class="ordinates"><summary>Solution ordinates and segment shapes</summary><ul>
-            ${question.stations.map((_, i) => `<li>${stationLabel(question.stations, i)} = ${fmt(question.answer[i])} ${units}${i < question.shapes.length ?
-                ` · next segment: ${shapeLabels[question.shapes[i]]}` : ''}</li>`).join('')}
+        <details class="ordinates"><summary>${t`Solution ordinates and segment shapes`}</summary><ul>
+            ${question.stations.map((_, i) => `<li>${stationLabel(question.stations, i)} = ${numberText(question.answer[i])} ${units}${i < question.shapes.length ?
+                t` · next segment: ${shapeLabels[question.shapes[i]]}` : ''}</li>`).join('')}
         </ul></details>`;
 }

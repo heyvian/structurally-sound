@@ -16,6 +16,7 @@ const workshopProgress = readWorkshops();
 let activeWorkshop = null;
 
 function saveWorkshops() {
+    updateValGold();
     try {
         localStorage.setItem(workshopStorageKey, JSON.stringify(workshopProgress));
     } catch {
@@ -48,38 +49,30 @@ function nextWorkshop() {
 const escapeTutor = value => String(value ?? '').replace(/[&<>"']/g, character =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 
-function parseWorkshopNumber(value) {
-    let text = value.trim().replaceAll('−', '-');
-    if (/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(text)) text = text.replaceAll(',', '');
-    if (/^[+-]?\d{1,3}(?: \d{3})+(?:\.\d+)?$/.test(text)) text = text.replaceAll(' ', '');
-    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) return NaN;
-    return Number(text);
-}
-
 function judgeTurn(turn, input) {
     if (turn.type === 'pick') {
         const choice = turn.choices.find(([value]) => value === input);
         if (!choice) return null;
         const correct = turn.correct.includes(input);
-        return { correct, message: choice[2] || (correct ? turn.solution : 'Take another look at the drawing and the condition Val described.'),
+        return { correct, message: choice[2] || (correct ? turn.solution : t('Take another look at the drawing and the condition Val described.')),
             skill: correct ? undefined : turn.skill, answer: choice[1] };
     }
     if (turn.type === 'sketch') {
         const error = firstGraphError(turn, input);
-        if (!error) return { correct: true, answer: 'My sketch', message: turn.solution };
+        if (!error) return { correct: true, answer: t('My sketch'), message: turn.solution };
         if (error.station !== undefined) {
             const i = error.station;
             const signError = turn.answer[i] * input.values[i] < 0 && Math.abs(turn.answer[i] + input.values[i]) < .051;
-            const advice = signError ? 'The height has the right size. Check which side of zero the sign calls for.' : turn.kind === 'M' ?
-                'Start with the previous moment and add the signed shear area over this interval.' :
-                'Start with the previous shear. Add any force jump and subtract the accumulated downward load.';
-            return { correct: false, answer: 'My sketch', skill: signError ? 'signs' : undefined,
-                message: `Let’s revisit ${stationLabel(turn.stations, i)}. ${advice}` };
+            const advice = signError ? t('The height has the right size. Check which side of zero the sign calls for.') : turn.kind === 'M' ?
+                t('Start with the previous moment and add the signed shear area over this interval.') :
+                t('Start with the previous shear. Add any force jump and subtract the accumulated downward load.');
+            return { correct: false, answer: t('My sketch'), skill: signError ? 'signs' : undefined,
+                message: t`Let’s revisit ${stationLabel(turn.stations, i)}. ${advice}` };
         }
         const i = error.segment;
-        return { correct: false, answer: 'My sketch', message: `Your points check out. Look at the segment from ${fmt(turn.stations[i].x)} to ${fmt(turn.stations[i + 1].x)} m. Constant shear gives a straight segment. Changing shear gives a curve. Check which way the shear slopes.` };
+        return { correct: false, answer: t('My sketch'), message: t`Your points check out. Look at the segment from ${numberText(turn.stations[i].x)} to ${numberText(turn.stations[i + 1].x)} m. Constant shear gives a straight segment. Changing shear gives a curve. Check which way the shear slopes.` };
     }
-    const value = parseWorkshopNumber(input);
+    const value = typeof input === 'number' ? input : parseStudyNumber(input);
     if (!Number.isFinite(value)) return null;
     const tolerance = turn.tolerance ?? Math.max(.025, Math.abs(turn.expected) * .004);
     const correct = Math.abs(value - turn.expected) <= tolerance;
@@ -87,10 +80,10 @@ function judgeTurn(turn, input) {
     const known = turn.wrong?.find(([candidate]) => Math.abs(candidate - value) <= Math.max(.00002, Math.abs(candidate) * .005));
     return {
         correct, skill: correct ? undefined : reversed ? 'signs' : known?.[2] || turn.skill,
-        answer: `${String(value).replace(/^-/, '−')}${turn.unit ? ' ' + turn.unit : ''}`,
+        answer: `${studyInputText(value).replace(/^-/, '−')}${turn.unit ? ' ' + turn.unit : ''}`,
         message: correct ? turn.solution : known?.[1] || (reversed
-            ? 'Your magnitude is right. Check which direction you called positive and which way this term acts.'
-            : 'Try that again. Keep the givens and their units beside your equation, and follow the steps one at a time.'),
+            ? t('Your magnitude is right. Check which direction you called positive and which way this term acts.')
+            : t('Try that again. Keep the givens and their units beside your equation, and follow the steps one at a time.')),
     };
 }
 
@@ -113,11 +106,25 @@ function valNote(content, pose = 'guide', label = 'Val') {
         <div class="tutor-speech"><b class="tutor-speaker">${label}</b>${content}</div></div>`;
 }
 
-function tutorFeedback(record) {
-    if (!record?.feedback) return '';
-    const { answer, message, correct } = record.feedback;
-    const soft = record.status === 'shown' ? 'Let’s work it out' : correct ? 'That’s right' : 'Not quite yet';
-    return `${answer ? `<div class="tutor-reply"><b>You</b><span>${escapeTutor(answer)}</span></div>` : ''}
+function localizedFeedback(turn, record) {
+    if (!record?.feedback) return null;
+    if (record.status === 'shown') return { message: turn.solution };
+    let input = record.submitted;
+    if (input === undefined) {
+        if (turn.type === 'pick') input = record.lastChoice;
+        else if (turn.type === 'sketch') input = record.draft;
+        else input = parseStudyNumber(record.feedback.answer?.split(' ')[0] || '', 'en');
+    }
+    if (input == null) return record.feedback;
+    return judgeTurn(turn, input) || record.feedback;
+}
+
+function tutorFeedback(turn, record) {
+    const feedback = localizedFeedback(turn, record);
+    if (!feedback) return '';
+    const { answer, message, correct } = feedback;
+    const soft = record.status === 'shown' ? t('Let’s work it out') : correct ? t('That’s right') : t('Not quite yet');
+    return `${answer ? `<div class="tutor-reply"><b>${t('You')}</b><span>${escapeTutor(answer)}</span></div>` : ''}
         <div class="tutor-feedback ${correct || record.status === 'shown' ? '' : 'tutor-retry'}" tabindex="-1">
             ${valNote(`<strong>${soft}</strong><p>${escapeTutor(message)}</p>`, correct ? 'cheer' : 'think')}
         </div>${refresherOffer(record.suggested)}`;
@@ -127,22 +134,22 @@ function refresherOffer(skill, action = 'data-tutor') {
     const offer = refreshers[skill];
     if (!offer) return '';
     const copy = {
-        signs: 'You’ve found the right magnitude twice. Want to practice which direction gets the minus sign?',
-        reactions: 'The reactions have been tricky. We can practice choosing a pivot and solving the two equations before coming back.',
-        trig: 'The angle has caught you twice. A quick look at the triangle can help.',
+        signs: t('You’ve found the right magnitude twice. Want to practice which direction gets the minus sign?'),
+        reactions: t('The reactions have been tricky. We can practice choosing a pivot and solving the two equations before coming back.'),
+        trig: t('The angle has caught you twice. A quick look at the triangle can help.'),
     };
     return `<aside class="refresher-offer"><p>${copy[skill]}</p>
-        <button type="button" ${action}="refresh" data-value="${skill}">Try ${offer.title.toLowerCase()}</button></aside>`;
+        <button type="button" ${action}="refresh" data-value="${skill}">${t`Try ${offer.title.toLowerCase()}`}</button></aside>`;
 }
 
 function tutorHistory(workshop, run) {
     const earlier = workshop.turns.slice(0, run.cursor);
     if (!earlier.length) return '';
     const archive = earlier.slice(0, -1);
-    return `${archive.length ? `<details class="tutor-archive"><summary>Earlier turns (${archive.length})</summary>
+    return `${archive.length ? `<details class="tutor-archive"><summary>${t`Earlier turns (${archive.length})`}</summary>
         ${archive.map((turn, i) => `<details><summary>${turn.prompt}</summary><p>${turn.intro}</p>
-            <p>${escapeTutor(run.records[i]?.feedback?.message || turn.solution)}</p></details>`).join('')}</details>` : ''}
-        <div class="tutor-previous"><p>${escapeTutor(run.records[run.cursor - 1]?.feedback?.message || earlier.at(-1).solution)}</p></div>`;
+            <p>${escapeTutor(localizedFeedback(turn, run.records[i])?.message || turn.solution)}</p></details>`).join('')}</details>` : ''}
+        <div class="tutor-previous"><p>${escapeTutor(localizedFeedback(earlier.at(-1), run.records[run.cursor - 1])?.message || earlier.at(-1).solution)}</p></div>`;
 }
 
 function tutorDrawing(workshop, turn, interactive) {
@@ -155,7 +162,7 @@ function tutorDrawing(workshop, turn, interactive) {
             <span aria-hidden="true">${key.length === 1 ? key : '＋'}</span></button>` : '';
     }).join('') : '';
     return `<aside class="tutor-drawing">
-        <div class="tutor-drawing-title"><span>${turn.drawing ? 'Drawing' : workshop.drawing.caption}</span>${hotspots ? '<span>Tap a point</span>' : ''}</div>
+        <div class="tutor-drawing-title"><span>${turn.drawing ? t('Drawing') : workshop.drawing.caption}</span>${hotspots ? `<span>${t("Tap a point")}</span>` : ''}</div>
         <div class="tutor-drawing-frame">${drawing.markup}${hotspots}</div>
         ${drawing.label ? `<p>${drawing.label}</p>` : ''}
     </aside>`;
@@ -166,26 +173,32 @@ function tutorInputs(turn, record, isRefresher) {
         return turn.type === 'sketch' ? `<div class="tutor-solution-plot">${graphSolution(turn)}</div>` : '';
     }
     if (turn.type === 'pick') {
-        return `<div class="tutor-choices" aria-label="Answer choices" role="group">
+        return `<div class="tutor-choices" aria-label="${t`Answer choices`}" role="group">
             ${turn.choices.map(([id, name]) => `<button type="button" data-tutor="pick" data-value="${id}"
                 ${record.lastChoice === id ? 'class="previous-choice"' : ''}>${name}</button>`).join('')}
         </div>`;
     }
     if (turn.type === 'sketch') return `<div class="tutor-sketch">${graphMarkup(turn)}</div>
-        <button class="primary" type="button" data-tutor="check-sketch" disabled>Check my sketch</button>`;
+        <button class="primary" type="button" data-tutor="check-sketch" disabled>${t`Check my sketch`}</button>`;
     const fieldId = isRefresher ? 'refresher-answer' : 'workshop-answer';
-    const calculator = turn.calculation ? `<details class="tutor-calculator"><summary>Try it in the formula</summary>
-        <form>${formulaFields(turn.calculation)}<button type="submit">Calculate</button><div role="status" data-tutor-result></div></form></details>` : '';
+    const calculator = turn.calculation ? `<details class="tutor-calculator"><summary>${t`Try it in the formula`}</summary>
+        <form>${formulaFields(turn.calculation)}<button type="submit">${t`Calculate`}</button><div role="status" data-tutor-result></div></form></details>` : '';
     return `${calculator}<form class="tutor-number-form">
         <div class="tutor-answer-field">
-            <label for="${fieldId}">Answer${turn.unit ? ` in ${turn.unit}` : ''}</label>
+            <label for="${fieldId}">${turn.unit ? t`Answer in ${turn.unit}` : t('Answer')}</label>
             <div><input name="tutor-answer" type="text" inputmode="decimal" autocomplete="off"
-                id="${fieldId}" value="${escapeTutor(typeof record.draft === 'string' ? record.draft : '')}">
-                <button type="button" data-tutor="sign" aria-label="Toggle minus sign">±</button></div>
+                id="${fieldId}" value="${escapeTutor(localizeDraft(record.draft, record.draftLocale))}">
+                <button type="button" data-tutor="sign" aria-label="${t`Toggle minus sign`}">±</button></div>
         </div>
-        <button class="primary" type="submit">Check</button>
+        <button class="primary" type="submit">${t`Check`}</button>
         <p class="tutor-input-error" role="status"></p>
     </form>`;
+}
+
+function localizeDraft(value, from = 'en') {
+    if (typeof value !== 'string') return '';
+    const number = parseStudyNumber(value, from);
+    return from !== locale && Number.isFinite(number) ? studyInputText(number) : value;
 }
 
 function refresherLinks(ids) {
@@ -199,23 +212,23 @@ function tutorTurn(workshop, run, isRefresher) {
     const refs = [...new Set([...(turn.refs || []), ...(workshop.refs || [])])];
     return `<div class="tutor-board">
         ${tutorDrawing(workshop, turn, !record.status)}
-        <section class="tutor-thread" aria-label="Conversation with Val">
+        <section class="tutor-thread" aria-label="${t`Conversation with Val`}">
             ${isRefresher ? '' : tutorHistory(workshop, run)}
             <div class="tutor-active">
-                <p class="tutor-step">Step ${run.cursor + 1} of ${workshop.turns.length}</p>
+                <p class="tutor-step">${t`Step ${run.cursor + 1} of ${workshop.turns.length}`}</p>
                 ${valNote(`<p>${turn.intro}</p>`)}
                 <h2 class="tutor-prompt" tabindex="-1">${turn.prompt}</h2>
-                ${turn.units ? `<p class="tutor-units"><b>Follow the units</b> ${turn.units}</p>` : ''}
-                ${!record.status ? tutorFeedback(record) : ''}
+                ${turn.units ? `<p class="tutor-units"><b>${t`Follow the units`}</b> ${turn.units}</p>` : ''}
+                ${!record.status ? tutorFeedback(turn, record) : ''}
                 ${tutorInputs(turn, record, isRefresher)}
-                ${record.status ? tutorFeedback(record) : ''}
+                ${record.status ? tutorFeedback(turn, record) : ''}
                 <div class="tutor-controls">
-                    ${run.cursor > 0 ? '<button type="button" data-tutor="back">‹ Previous step</button>' : ''}
-                    ${record.status ? `<button type="button" class="primary" data-tutor="next">${run.cursor + 1 === workshop.turns.length ? 'Finish' : 'Continue'} →</button>` :
-                        `<details class="tutor-help"><summary>Help with this step</summary>${turn.hint ? `<p>${turn.hint}</p>` : ''}
-                            <button type="button" data-tutor="reveal">Show me how</button></details>`}
+                    ${run.cursor > 0 ? `<button type="button" data-tutor="back">${t("‹ Previous step")}</button>` : ''}
+                    ${record.status ? `<button type="button" class="primary" data-tutor="next">${run.cursor + 1 === workshop.turns.length ? t('Finish') : t('Continue')} →</button>` :
+                        `<details class="tutor-help"><summary>${t`Help with this step`}</summary>${turn.hint ? `<p>${turn.hint}</p>` : ''}
+                            <button type="button" data-tutor="reveal">${t`Show me how`}</button></details>`}
                 </div>
-                ${!isRefresher && refs.length ? `<aside class="tutor-refresh"><h3>Need a refresher?</h3>${refresherLinks(refs)}</aside>` : ''}
+                ${!isRefresher && refs.length ? `<aside class="tutor-refresh"><h3>${t`Need a refresher?`}</h3>${refresherLinks(refs)}</aside>` : ''}
             </div>
         </section>
     </div>`;
@@ -229,16 +242,16 @@ function renderTutor(index, focus = 'title') {
     const following = unitOrder[unitOrder.indexOf(index) + 1];
     app.innerHTML = `<section class="tutor-session">
         <div class="tutor-session-heading">
-            <div>${button('‹ Learning path', 'home')}<p class="eyebrow">ARCH 600 · ${title}</p>
+            <div>${button(t('‹ Learning path'), 'home')}<p class="eyebrow">ARCH 600 · ${title}</p>
                 <h1 tabindex="-1">${workshop.title}</h1></div>
-            <progress value="${run.cursor}" max="${workshop.turns.length}" aria-label="Workshop steps complete"></progress>
+            <progress value="${run.cursor}" max="${workshop.turns.length}" aria-label="${t`Workshop steps complete`}"></progress>
         </div>
         ${complete ? `<article class="tutor-finish"><div class="tutor-celebrate val-pop">${valPortrait('cheer')}</div>
-            <h2>Workshop complete</h2><p>${workshop.outcome}</p>
-            <div class="toolbar"><button data-tutor="review" type="button">Review our conversation</button>
-                ${button('Try practice questions', 'practice', index)}
-                ${following === undefined ? button('Practice exams', 'final', '', 'primary') :
-                    button('Next topic →', 'unit', following, 'primary')}</div>
+            <h2>${t`Workshop complete`}</h2><p>${workshop.outcome}</p>
+            <div class="toolbar"><button data-tutor="review" type="button">${t`Review our conversation`}</button>
+                ${button(t('Try practice questions'), 'practice', index)}
+                ${following === undefined ? button(t('Practice exams'), 'final', '', 'primary') :
+                    button(t('Next topic →'), 'unit', following, 'primary')}</div>
         </article>` : tutorTurn(workshop, run, false)}
     </section>`;
     const root = app.querySelector('.tutor-session');
@@ -279,15 +292,15 @@ function openRefresher(key) {
     const run = { cursor: 0, records: [] };
     const dialog = document.createElement('dialog');
     dialog.className = 'tutor-dialog';
-    dialog.setAttribute('aria-label', `${workshop.title} refresher`);
+    dialog.setAttribute('aria-label', `${t`Refresher: ${workshop.title}`}`);
     document.body.append(dialog);
     dialog.addEventListener('close', () => dialog.remove(), { once: true });
     const draw = () => {
         const done = run.cursor === workshop.turns.length;
-        dialog.innerHTML = `<div class="tutor-dialog-head"><div><p class="eyebrow">Quick refresher</p><h2>${workshop.title}</h2></div>
-            <button type="button" data-tutor="close" aria-label="Close refresher">×</button></div>
-            ${done ? `<p>You’ve worked through the refresher. Let’s use it on the problem you were solving.</p>
-                <button class="primary" type="button" data-tutor="close">Back to my problem</button>` : tutorTurn(workshop, run, true)}`;
+        dialog.innerHTML = `<div class="tutor-dialog-head"><div><p class="eyebrow">${t`Quick refresher`}</p><h2>${workshop.title}</h2></div>
+            <button type="button" data-tutor="close" aria-label="${t`Close refresher`}">×</button></div>
+            ${done ? `<p>${t`You’ve worked through the refresher. Let’s use it on the problem you were solving.`}</p>
+                <button class="primary" type="button" data-tutor="close">${t`Back to my problem`}</button>` : tutorTurn(workshop, run, true)}`;
         const view = dialog.querySelector('.tutor-board');
         if (view) bindTutor(view, workshop, run, draw, null);
         dialog.querySelector('.tutor-feedback, .tutor-prompt, .primary')?.focus({ preventScroll: true });
@@ -310,10 +323,11 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         const feedback = judgeTurn(turn, input);
         if (!feedback) {
             const error = root.querySelector('.tutor-input-error');
-            if (error) error.textContent = 'Enter a number. Include a minus sign if your answer points in the negative direction.';
+            if (error) error.textContent = t('Enter a number. Include a minus sign if your answer points in the negative direction.');
             return;
         }
         record.feedback = feedback;
+        record.submitted = turn.type === 'number' ? parseStudyNumber(input) : input;
         if (turn.type === 'pick') record.lastChoice = input;
         if (feedback.correct) {
             record.status = 'correct';
@@ -327,7 +341,11 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
     const form = root.querySelector('.tutor-number-form');
     if (form) {
         const input = form.elements['tutor-answer'];
-        input.addEventListener('input', () => { record.draft = input.value; persist(); });
+        input.addEventListener('input', () => {
+            record.draft = input.value;
+            record.draftLocale = locale;
+            persist();
+        });
         form.addEventListener('submit', event => {
             event.preventDefault();
             submit(input.value);
@@ -338,9 +356,10 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         const result = calculator.querySelector('[data-tutor-result]');
         const fields = [...calculator.querySelectorAll('[data-formula-input]')];
         fields.forEach((field, i) => {
-            field.value = record.givens?.[i] ?? '';
+            field.value = localizeDraft(record.givens?.[i], record.givenLocale);
             field.addEventListener('input', () => {
                 record.givens = fields.map(input => input.value);
+                record.givenLocale = locale;
                 field.removeAttribute('aria-invalid');
                 result.textContent = '';
                 persist();
@@ -348,14 +367,14 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         });
         calculator.addEventListener('submit', event => {
             event.preventDefault();
-            const values = fields.map(field => field.valueAsNumber);
+            const values = fields.map(field => parseStudyNumber(field.value));
             const invalid = fields.filter((field, i) => {
                 const wrong = values[i] !== turn.calculation.inputs[i][3];
                 field.setAttribute('aria-invalid', String(wrong));
                 return wrong;
             });
             if (invalid.length) {
-                result.textContent = 'Check the highlighted givens and the units beside them.';
+                result.textContent = t('Check the highlighted givens and the units beside them.');
                 invalid[0].focus();
                 return;
             }

@@ -10,11 +10,24 @@ refreshers open in place, and the beam workshop includes interactive
 shear and moment plotting. The exam studio offers independent practice
 and a cumulative study guide.
 
+Use the language selector to study in English, Spanish, or Brazilian
+Portuguese. The app keeps your progress in the same browser across languages.
+You can also share a lesson link with `?lang=es` or `?lang=pt-BR` before its
+`#workshop-…` fragment. Val’s glass gradually turns gold as you complete
+the steps in the learning path.
+
 ## Run locally
 
 Open `index.html` in a browser from the checkout. Keep the `src` folder
 alongside it. The app runs without an installation, account, or server.
 Progress is saved in the current browser.
+
+## Update translations
+
+English source messages live next to the lessons and interface. Add the
+same key to `src/i18n/es.js` and `src/i18n/pt-BR.js` when changing copy.
+In a translated template, keep placeholders such as `{0}` and `{1}` for
+the original values. They can appear in a different order to fit the sentence.
 
 The steel profile reference contains selected CISC wide-flange properties.
 The diagrams and member checks are for structural analysis practice.
