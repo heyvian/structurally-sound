@@ -324,7 +324,7 @@ function formulaFields(question) {
                 <fieldset class="formula-fields"><legend>${t`Enter the values from the problem`}</legend>
                     <div class="station-grid">${question.inputs.map(([symbol, label, unit, expected], i) =>
                         `<label>${symbol} · ${label}${unit ? ` (${unit})` : ''}
-                            <input type="text" inputmode="${expected < 0 ? 'text' : 'decimal'}"
+                            <input class="study-number" type="text" inputmode="${expected < 0 ? 'text' : 'decimal'}"
                                 data-formula-input="${i}">
                         </label>`).join('')}</div>
                 </fieldset>`;
@@ -336,7 +336,7 @@ function interaction(question) {
             return formulaFields(question);
         case 'number':
             return `<label class="number-answer">${t`Answer ${question.unit ? `(${question.unit})` : ''}`}
-                <input id="number-answer" type="text" inputmode="decimal"></label>`;
+                <input id="number-answer" class="study-number" type="text" inputmode="decimal"></label>`;
         case 'graph':
             return graphMarkup(question);
         case 'stress':

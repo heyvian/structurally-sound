@@ -94,7 +94,7 @@ function graphMarkup(question) {
         <p class="graph-announcement" role="status" data-graph-announcement></p>
         <fieldset class="diagram-fields"><legend>${question.kind === 'M' ? t('Moment ordinates · kN·m') : t('Shear ordinates · kN')}</legend>
             <div class="station-grid">${question.stations.map((_, i) =>
-                `<label>${stationLabel(question.stations, i)}<input type="text" inputmode="decimal" data-station="${i}"></label>`).join('')}</div>
+                `<label>${stationLabel(question.stations, i)}<input class="study-number" type="text" inputmode="decimal" data-station="${i}"></label>`).join('')}</div>
         </fieldset>
         ${question.shapes.length ? `<fieldset class="diagram-fields"><legend>${t`Segment geometry`}</legend>
             <p>${t`After placing the points, tap a line or its button to cycle through shapes. A positive bow curves downward from the straight line between the points.`}</p>

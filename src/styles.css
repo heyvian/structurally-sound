@@ -538,7 +538,7 @@ progress::-moz-progress-bar { background: var(--red); }
 .option[aria-pressed="true"] { background: var(--ice); border-color: var(--blue); box-shadow: 3px 3px 0 var(--blue); }
 
 label { display: block; font-weight: 650; }
-input[type="number"], select {
+.study-number, select {
     display: block;
     width: 100%;
     min-height: 42px;
@@ -550,7 +550,7 @@ input[type="number"], select {
     border-radius: 0;
 }
 
-input[type="number"] { font-family: var(--mono); }
+.study-number { font: 16px var(--mono); }
 .number-answer, .profile-answer { max-width: 26rem; margin: 15px 0; }
 .match-fields, .diagram-fields, .formula-fields { margin: 13px 0; min-width: 0; border: 1px solid var(--line); padding: 10px 12px 12px; }
 .match-fields label + label { margin-top: 10px; }
