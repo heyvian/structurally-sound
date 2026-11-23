@@ -1,10 +1,5 @@
 const app = document.getElementById('app');
 const progressKey = 'structural-val-v1';
-const learningModes = {
-    deep: ['Deep dive', '25–45 min', 'Learn the mechanics, follow a worked example, and solve a new problem with guidance.'],
-    crash: ['Crash course', '10–15 min', 'Learn the core method quickly and test it on a few representative problems.'],
-    review: ['Quiz-day review', '5–10 min', 'Recall key ideas, revisit mistakes, and prepare a compact handwritten sheet.'],
-};
 const valLines = [
     'Nothing has been poured yet. We can revise the drawing.',
     'A negative sign is information. Check which way the arrow points.',
@@ -22,12 +17,12 @@ function readProgress() {
     try {
         const saved = JSON.parse(localStorage.getItem(progressKey));
         return {
+            ...saved,
             xp: Number.isFinite(saved?.xp) ? saved.xp : 0,
-            done: saved?.done && typeof saved.done === 'object' ? saved.done : {},
             miss: saved?.miss && typeof saved.miss === 'object' ? saved.miss : {},
         };
     } catch {
-        return { xp: 0, done: {}, miss: {} };
+        return { xp: 0, miss: {} };
     }
 }
 
@@ -88,14 +83,13 @@ function saveProgress() {
     } catch {
         // The app can still run in browsers with storage disabled.
     }
-    document.getElementById('xp').textContent = `${state.xp} XP`;
+    document.getElementById('xp').textContent = `${state.xp + workshopXp()} XP`;
 }
 
 function button(label, action, value = '', style = '') {
     return `<button type="button" class="${style}" data-action="${action}" data-value="${value}">${label}</button>`;
 }
 
-const paragraphs = items => items.map(text => `<p>${text}</p>`).join('');
 const list = (items, tag = 'ul') => `<${tag}>${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`;
 
 function methodPanel(method, open = false) {
@@ -120,6 +114,13 @@ function questionMethod(question) {
     return methodPanel(methods[id], guided || (firstUse && session.mode !== 'review'));
 }
 
+function practiceMistake(question, input) {
+    if (question.type === 'number' && input * question.answer < 0 && grade(question, -input)) return 'signs';
+    const method = questionMethods.get(question.key);
+    if (method === 'reactions' || (method === 'balance' && question.type === 'number')) return 'reactions';
+    if (method === 'trig' && question.type === 'choice') return 'trig';
+}
+
 function focusPage() {
     window.scrollTo(0, 0);
     const title = app.querySelector('h1, h2');
@@ -130,13 +131,14 @@ function focusPage() {
 }
 
 function show(html) {
+    closeWorkshopRoute();
     app.innerHTML = html;
     focusPage();
 }
 
 function learningProgress() {
-    const count = Object.values(state.done).filter(Boolean).length;
-    const total = units.length * Object.keys(learningModes).length;
+    const count = unitOrder.filter(workshopFinished).length;
+    const total = unitOrder.length;
     const misses = [...questionBank.values()].filter(question => state.miss[question.key]).length;
     const levels = Math.min(6, Math.floor(count * 6 / total));
     return `<aside class="home-sidebar">
@@ -144,12 +146,13 @@ function learningProgress() {
             <h2 id="progress-title">Your study progress</h2>
             <div class="building-progress" aria-hidden="true">${Array.from({ length: 6 }, (_, i) =>
                 `<span class="${i >= 6 - levels ? 'built' : ''}"></span>`).join('')}</div>
-            <p><strong>${count} / ${total}</strong> study modes complete</p>
+            <p><strong>${count} / ${total}</strong> workshops complete</p>
             <p class="muted">Progress is saved in this browser.</p>
             ${button(`Revisit mistakes${misses ? ` (${misses})` : ''}`, 'weak')}
         </section>
         <section class="panel resources" aria-labelledby="tools-title">
             <h2 id="tools-title">Study references</h2>
+            ${button('Practice questions', 'practice-menu')}
             ${button('Cumulative study guide', 'sheet-all')}
             ${button('Steel profile table', 'steel')}
         </section>
@@ -159,12 +162,15 @@ function learningProgress() {
 function home() {
     session = undefined;
     saveProgress();
-    show(`<div class="hero">
+    const destination = nextWorkshop();
+    const resume = Boolean(workshopProgress.runs[destination]?.records?.length && !workshopFinished(destination));
+    show(`<div class="hero tutor-home">
         <div class="hero-copy">
-            <div class="eyebrow">ARCH 600 · Unofficial study app</div>
-            <h1><span>Good things</span><em>stand up.</em></h1>
-            <p>Learn structures with Val, from your first force diagram to a full beam and truss analysis.</p>
-            <a class="primary hero-link" href="#path-title">Explore the learning path <span aria-hidden="true">↓</span></a>
+            <div class="eyebrow">ARCH 600 · Structures for Architects I</div>
+            <h1><span class="hero-brand">Dr. FixBoi®’s</span> <span>Structurally</span> <em>Sound</em></h1>
+            <p class="hero-tagline">Teaching you things you don't really need to know but here we are.</p>
+            <div class="home-start">${button(resume ? 'Resume workshop →' : 'Start learning →', 'unit', destination, 'primary hero-link')}
+                ${resume ? `<small>${workshops[destination].title}</small>` : ''}</div>
         </div>
         <figure class="hero-scene">
             <div class="hero-val val-entrance">${valPortrait('hello', 'Val, a little glass tower with wide eyes')}</div>
@@ -176,89 +182,35 @@ function home() {
             <h2 id="path-title">Learning path</h2>
             <div class="course-index">
             ${unitOrder.map(i => {
-                const completed = Object.keys(learningModes).filter(mode => state.done[`${i}:${mode}`]).length;
+                const finished = workshopFinished(i);
+                const started = workshopProgress.runs[i]?.records?.length;
                 return `<button type="button" class="unit" data-action="unit" data-value="${i}">
                     <span class="num" aria-hidden="true">${unitNumber(i)}</span><span class="details">${units[i].title}
-                    <small>${completed}/3 modes complete</small></span><span class="unit-arrow" aria-hidden="true">↗</span></button>`;
+                    <small>${finished ? 'Complete · Review' : started ? 'In progress · Resume' : workshops[i].title}</small></span>
+                    <span class="unit-arrow" aria-hidden="true">↗</span></button>`;
             }).join('')}
-            ${button('<span class="num" aria-hidden="true">★</span><span class="details">Final exam studio<small>Review, workshops and practice exams</small></span><span class="unit-arrow" aria-hidden="true">↗</span>', 'final', '', 'unit capstone')}
+            ${button('<span class="num" aria-hidden="true">★</span><span class="details">Practice and exams<small>Test your approach on other problems</small></span><span class="unit-arrow" aria-hidden="true">↗</span>', 'final', '', 'unit capstone')}
             </div>
         </section>
         ${learningProgress()}
     </div>`);
 }
 
-function section(i) {
-    const unit = units[i];
-    show(`${button('‹ Learning path', 'home')}
-        <article class="lesson unit-sheet">
-            <div class="sectionmark"><span>Sheet ${unitNumber(i)}</span><span>${unit.date}</span></div>
-            <div class="topic-heading">
-                <div><h1>${unit.title}</h1><p>${lessonPlans[i].goal}</p></div>
-                <div class="topic-val val-entrance">${valPortrait('guide')}</div>
-            </div>
-            <div class="modes">${Object.entries(learningModes).map(([mode, [title, duration, description]]) =>
-                button(`<b>${title}${state.done[`${i}:${mode}`] ? ' ✓' : ''}</b>
-                <span>${description}</span><span class="duration">${duration}</span>`, 'mode', `${i}:${mode}`, 'mode')).join('')}</div>
-            <small>Times are estimates. Use the deep dive if you’re learning this topic for the first time.</small>
-        </article>`);
-}
-
-function teach(prompt, step, body, plan, topic = '') {
-    return { type: 'teach', prompt, step, body, fig: plan.figure, b: plan.beam, topic };
-}
-
-function conceptCards(i) {
-    const plan = lessonPlans[i];
-    return plan.concepts.map(([title, text, figure = plan.figure], j) => teach(title, 'Understand it', paragraphs([
-        ...(j === 0 ? [units[i].intro] : []), text,
-    ]), { ...plan, figure }, units[i].title));
-}
-
-function workedCard(i) {
-    const plan = lessonPlans[i];
-    const { setup, steps, restraints } = plan.example;
-    return teach('Worked example', 'Watch it',
-        `<p>${setup}</p>${restraints ? restraintPair(restraints) : ''}<div class="worked">${list(steps, 'ol')}</div>`,
-        restraints ? {} : plan, units[i].title);
-}
-
-function quickCard(i) {
-    const plan = lessonPlans[i];
-    return teach('The method in three steps', 'Crash course', `<p>${plan.goal}</p>
-        ${list(plan.quick, 'ol')}<p class="formula">${plan.sheet}</p>`,
-        { ...plan, figure: plan.quickFigure || plan.figure }, units[i].title);
-}
-
-function practiceCards(questions, step = 'Do it yourself') {
+function practiceCards(questions, step = 'Practice') {
     return questions.map(question => ({ ...question, step }));
 }
 
-function startMode(i, mode) {
-    const plan = lessonPlans[i];
-    const current = unitQuestions[i];
-    const earlier = unitOrder.slice(0, unitOrder.indexOf(i));
-    const recall = earlier.slice(-2).map(u => {
-        const questions = unitQuestions[u];
-        return questions.find(q => state.miss[q.key]) || questions[(i + u) % questions.length];
-    });
-    const representative = current.filter(q => q.type !== 'choice').slice(0, 4);
-    let queue;
-    if (mode === 'deep') {
-        queue = [
-            ...conceptCards(i), calculationCards[i], workedCard(i), ...guidedQuestions[i],
-            ...practiceCards(current), ...practiceCards(recall, 'Revisit it'),
-        ];
-    } else if (mode === 'crash') {
-        queue = [quickCard(i), calculationCards[i], workedCard(i), ...guidedQuestions[i].slice(0, 1),
-            ...practiceCards(representative.slice(0, 3)), ...practiceCards(recall.slice(-1), 'Revisit it')];
-    } else {
-        const missed = current.filter(q => state.miss[q.key]);
-        const selected = [...new Set([...missed.slice(0, 3), current[0], ...representative, current.at(-1)])].slice(0, 6);
-        queue = [...practiceCards(selected, 'Active recall'), ...practiceCards(recall.slice(-1), 'Revisit it'),
-            teach('Common mistakes to check', 'Quiz-day review', list(plan.pitfalls), {}, units[i].title)];
-    }
-    begin(queue, { mode, unit: i, title: learningModes[mode][0] });
+function practiceMenu() {
+    show(`${button('‹ Learning path', 'home')}<section class="lesson">
+        <h1>Practice questions</h1><p>Choose a topic to try other problems. Worked methods are available beside the questions.</p>
+        <div class="course-index">${unitOrder.map(i => button(units[i].title, 'practice', i)).join('')}</div>
+    </section>`);
+}
+
+function startPractice(i) {
+    if (!unitQuestions[i]) return;
+    const questions = [calculationCards[i], ...guidedQuestions[i], ...unitQuestions[i]];
+    begin(practiceCards(questions), { mode: 'practice', unit: i, title: units[i].title + ' practice' });
 }
 
 function finalMenu() {
@@ -273,9 +225,9 @@ function finalMenu() {
             </div>
             <div class="studio-grid">
                 <section><h2>Guided review</h2>
-                    ${button('Cumulative review', 'final-review')}
-                    ${button('Integrated beam workshop', 'beam')}
-                    ${button('Integrated truss workshop', 'truss')}</section>
+                    ${button('Cumulative beam workshop', 'unit', 9)}
+                    ${button('Extra beam practice', 'beam')}
+                    ${button('Extra truss practice', 'truss')}</section>
                 <section><h2>Independent practice</h2>
                     ${button('Practice exam A · Beam analysis', 'exam', 'beam')}
                     ${button('Practice exam B · Truss analysis', 'exam', 'truss')}
@@ -286,27 +238,11 @@ function finalMenu() {
         </article>`);
 }
 
-function startFinalReview() {
-    const queue = unitOrder.flatMap(i => [quickCard(i), calculationCards[i], workedCard(i), ...guidedQuestions[i].slice(0, 1),
-        ...practiceCards(unitQuestions[i].filter(q => q.type !== 'choice').slice(0, 1))]);
-    begin(queue, { mode: 'final', title: 'Guided cumulative review' });
-}
-
-function startWorkshop(kind) {
-    const isBeam = kind === 'beam';
-    const intro = isBeam
-        ? teach('Beam analysis', 'Workshop', list([
-            'Sketch the loads and support reactions before calculating.',
-            'Work from distributed resultants to reactions, then V and M.',
-            'The sizing step gives you the verified moment, so a mistake earlier won’t block practice.',
-        ], 'ol'), { beam: beams[0] })
-        : teach('Truss analysis under lateral load', 'Workshop', list([
-            'Use the whole structure to find support reactions.',
-            'Work from the joint with the fewest unknowns. Assume tension and retain signs.',
-            'Later prompts give verified preceding values where needed.',
-        ], 'ol'), { figure: 'lateral' });
-    const questions = isBeam ? beamPractice : trussPractice;
-    begin([intro, ...practiceCards(questions, 'Do it together')], { mode: 'final', title: 'Guided workshop' });
+function startIntegratedPractice(kind) {
+    const beam = kind === 'beam';
+    begin(practiceCards(beam ? beamPractice : trussPractice), {
+        mode: 'practice', title: beam ? 'Integrated beam practice' : 'Integrated truss practice',
+    });
 }
 
 function startExam(kind) {
@@ -369,10 +305,8 @@ function options(question, multiple = false) {
             aria-pressed="false">${choice}</button>`).join('')}</div>`;
 }
 
-function interaction(question) {
-    switch (question.type) {
-        case 'formula':
-            return `<p class="formula">${question.symbol} = ${question.expression}</p>
+function formulaFields(question) {
+    return `<p class="formula">${question.symbol} = ${question.expression}</p>
                 <fieldset class="formula-fields"><legend>Enter the values from the problem</legend>
                     <div class="station-grid">${question.inputs.map(([symbol, label, unit], i) =>
                         `<label>${symbol} · ${label}${unit ? ` (${unit})` : ''}
@@ -380,6 +314,12 @@ function interaction(question) {
                                 data-formula-input="${i}">
                         </label>`).join('')}</div>
                 </fieldset>`;
+}
+
+function interaction(question) {
+    switch (question.type) {
+        case 'formula':
+            return formulaFields(question);
         case 'number':
             return `<label class="number-answer">Answer ${question.unit ? `(${question.unit})` : ''}
                 <input id="number-answer" type="number" step="any" inputmode="decimal"></label>`;
@@ -426,14 +366,13 @@ function render() {
         return;
     }
     const question = session.queue[session.cursor];
-    const instruction = question.type === 'teach';
     const exam = session.mode === 'exam';
     const position = session.cursor + 1;
     answer = null;
     showGraphAnswer = null;
-    show(`<article class="lesson study ${instruction ? 'study-instruction' : 'study-question'}">
+    show(`<article class="lesson study study-question">
         <div class="study-top">
-            <nav class="study-nav" aria-label="Slide navigation">
+            <nav class="study-nav" aria-label="Question navigation">
                 ${button('× Exit', ['exam', 'final'].includes(session.mode) ? 'final' : 'home')}
                 <button type="button" data-action="back" ${position === 1 ? 'disabled' : ''}>‹ Back</button>
             </nav>
@@ -447,17 +386,15 @@ function render() {
         </div>
         ${question.setup ? `<p class="question-setup">${question.setup}</p>` : ''}
         ${question.type === 'fbd' ? '' : figureFor(question)}
-        ${!instruction && !exam ? questionMethod(question) : ''}
-        ${instruction ? `<div class="explanation">${question.body}</div>` : interaction(question)}
+        ${exam ? '' : questionMethod(question)}
+        ${interaction(question)}
         <div id="feedback" aria-live="polite"></div>
         <div class="toolbar">
-            ${!instruction && !exam ? button('Hint', 'hint') : ''}
-            ${!instruction && exam ? button('Skip question', 'skip') : ''}
-            ${button(instruction ? 'Continue' : exam ? 'Record answer' : question.type === 'formula' ? 'Calculate' : 'Check answer',
-                instruction ? 'next' : 'check', '', 'primary')}
+            ${exam ? '' : button('Hint', 'hint')}
+            ${exam ? button('Skip question', 'skip') : ''}
+            ${button(exam ? 'Record answer' : question.type === 'formula' ? 'Calculate' : 'Check answer', 'check', '', 'primary')}
         </div>
     </article>`);
-    if (instruction) return;
     setAnswer(null);
     if (question.type === 'graph') showGraphAnswer = bindGraph(question, setAnswer);
     if (question.type === 'formula') {
@@ -525,10 +462,7 @@ function grade(question, input) {
         return question.answer.every((value, i) => input[i] === value);
     }
     if (question.type === 'graph') {
-        const axisRange = Math.max(5, Math.ceil(Math.max(...question.answer.map(Math.abs)) / 5) * 5);
-        return question.answer.every((value, i) =>
-            Math.abs(input.values[i] - value) <= Math.max(.05, Math.abs(value) * .005, input.sketched[i] ? axisRange * .045 : 0))
-            && question.shapes.every((shape, i) => shape === input.shapes[i]);
+        return !firstGraphError(question, input);
     }
     return input === question.answer;
 }
@@ -569,6 +503,10 @@ function formulaResult(question, values) {
         return null;
     }
 
+    return formulaSubstitution(question, values);
+}
+
+function formulaSubstitution(question, values) {
     const display = value => fmt(value).replace(/^-/, '−');
     const substitution = question.substitute(...values.map(display));
     const result = question.calculate(...values);
@@ -586,13 +524,18 @@ function checkAnswer(skipped = false) {
     const calculation = question.type === 'formula' ? formulaResult(question, answer) : '';
     if (calculation === null) return;
     const correct = !skipped && (question.type === 'formula' || grade(question, answer));
-    session.results.set(session.cursor, { question, correct, skipped });
+    const result = { question, correct, skipped };
+    session.results.set(session.cursor, result);
     if (session.mode === 'exam') {
         next();
         return;
     }
     recordProgress(question, correct);
     saveProgress();
+    if (!correct && !skipped) {
+        noticeMistake(result, practiceMistake(question, answer));
+        saveWorkshops();
+    }
     const method = app.querySelector('.method-panel');
     if (!correct && method) method.open = true;
 
@@ -606,7 +549,7 @@ function checkAnswer(skipped = false) {
     feedback.innerHTML = `${calculation}<div class="feedback ${correct ? '' : 'bad'}">
         <div class="feedback-val val-pop">${valPortrait(correct ? 'cheer' : 'think')}</div>
         <div><p><strong>${correct ? 'Structurally sound!' : 'Here’s how to work it out'}</strong></p>
-        <p>${question.explain}</p><small>${message}</small></div></div>`;
+        <p>${question.explain}</p><small>${message}</small></div></div>${refresherOffer(result.suggested, 'data-action')}`;
     if (question.type === 'fbd') {
         document.getElementById('fbd-figure').innerHTML = beamFigure(question.b || center, question.answer);
     }
@@ -650,7 +593,6 @@ function finish() {
     const results = [...session.results.values()];
     const correct = results.filter(result => result.correct).length;
     if (mode === 'exam') results.forEach(result => recordProgress(result.question, result.correct));
-    if (unit != null && results.length) state.done[`${unit}:${mode}`] = true;
     saveProgress();
     const skipped = results.filter(result => result.skipped).length;
     session.screens.clear();
@@ -665,7 +607,6 @@ function finish() {
                 <p>${question.explain}</p>${question.type === 'graph' ? graphSolution(question) : ''}
                 ${methodPanel(methods[questionMethods.get(question.key)])}
                 </details>`).join('')}</section>` : ''}
-        ${mode === 'review' ? `<h2>What to put on your sheet</h2>${studySheetContent(unit)}` : ''}
         <div class="toolbar">${button('Learning path', 'home')}${button('Revisit mistakes', 'weak')}
             ${button(unit == null ? 'Cumulative study guide' : 'Study sheet',
                 unit == null ? 'sheet-all' : 'sheet', unit ?? '', 'primary')}</div>
@@ -673,11 +614,10 @@ function finish() {
 }
 
 const actions = {
-    home, unit: value => section(Number(value)),
-    mode: value => { const [unit, mode] = value.split(':'); startMode(Number(unit), mode); },
-    final: finalMenu, 'final-review': startFinalReview,
-    beam: () => startWorkshop('beam'), truss: () => startWorkshop('truss'), exam: startExam,
-    weak, steel: showSteel, sheet: value => sheet(Number(value)), 'sheet-all': () => sheet(),
+    home, unit: value => openWorkshop(Number(value)),
+    practice: value => startPractice(Number(value)), 'practice-menu': practiceMenu,
+    final: finalMenu, beam: () => startIntegratedPractice('beam'), truss: () => startIntegratedPractice('truss'), exam: startExam,
+    weak, steel: showSteel, sheet: value => sheet(Number(value)), 'sheet-all': () => sheet(), refresh: openRefresher,
     restraint: key => {
         const comparison = app.querySelector('.buckling-comparison');
         if (!comparison || !Object.hasOwn(bucklingCases, key)) return;
@@ -703,4 +643,8 @@ app.addEventListener('click', event => {
         choose(Number(control.dataset.choice ?? control.dataset.point));
     }
 });
-home();
+const linkedWorkshop = /^#workshop-(\d+)$/.exec(location.hash);
+if (linkedWorkshop && workshops[Number(linkedWorkshop[1])]) {
+    saveProgress();
+    openWorkshop(Number(linkedWorkshop[1]));
+} else home();
