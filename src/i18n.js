@@ -1,5 +1,5 @@
 const translations = Object.create(null);
-const languages = { en: 'English', es: 'Español', 'pt-BR': 'Português (Brasil)' };
+const languages = { en: 'English', es: 'Español', fr: 'Français', 'pt-BR': 'Português (Brasil)' };
 const languageKey = 'structural-language';
 
 function savedLanguage() {
@@ -12,7 +12,7 @@ function savedLanguage() {
 
 const requestedLanguage = new URLSearchParams(location.search).get('lang');
 const preferredLanguage = navigator.languages?.map(code => code.split('-')[0])
-    .find(code => ['en', 'es', 'pt'].includes(code));
+    .find(code => ['en', 'es', 'fr', 'pt'].includes(code));
 const locale = [requestedLanguage, savedLanguage(), preferredLanguage === 'pt' ? 'pt-BR' : preferredLanguage, 'en']
     .find(code => Object.hasOwn(languages, code));
 document.documentElement.lang = locale;
@@ -48,7 +48,7 @@ function parseStudyNumber(value, language = locale) {
         (language === 'en' && /^[+-]?[1-9]\d{0,2}(?:,\d{3})+$/.test(text))) {
         text = text.replaceAll(',', '');
     } else if (/^[+-]?[1-9]\d{0,2}(?:\.\d{3})+,\d+$/.test(text) ||
-        (language !== 'en' && /^[+-]?[1-9]\d{0,2}(?:\.\d{3})+$/.test(text))) {
+        (['es', 'pt-BR'].includes(language) && /^[+-]?[1-9]\d{0,2}(?:\.\d{3})+$/.test(text))) {
         text = text.replaceAll('.', '').replace(',', '.');
     } else if (/^[+-]?(?:\d+,\d*|,\d+)(?:e[+-]?\d+)?$/i.test(text)) {
         text = text.replace(',', '.');

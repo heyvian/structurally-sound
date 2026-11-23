@@ -23,12 +23,14 @@ function momentArm(aboutA) {
     t`The highlighted support ${aboutA ? 'A' : 'B'} is the point we are measuring about.`);
 }
 
-function workshopTrussFigure(variant) {
+let workshopTrussNumber = 0;
+function workshopTrussFigure(variant, values = {}) {
+    const id = `workshop-truss-${workshopTrussNumber++}`;
     const { nodes, members, load } = workshopTruss;
     const px = x => 104 + x * 26;
     const py = y => 307 - y * 26;
     const reactions = variant === 'truss-reactions';
-    const solved = variant === 'truss-solved';
+    const solved = variant === 'truss-solved' || members.some(name => Object.hasOwn(values, name));
     const points = {};
     const joints = Object.entries(nodes).map(([name, [x, y]]) => {
         const centerX = px(x);
@@ -39,24 +41,32 @@ function workshopTrussFigure(variant) {
     const rods = members.map(name => {
         const [x1, y1] = nodes[name[0]];
         const [x2, y2] = nodes[name[1]];
-        const forceType = ['BC', 'BD', 'ED'].includes(name) ? 'compression' : 'tension';
-        return `<path class="${solved ? forceType : 'frame'}" d="M${px(x1)} ${py(y1)}L${px(x2)} ${py(y2)}"/>`;
+        const value = values[name];
+        const forceType = variant === 'truss-solved' ? (['BC', 'BD', 'ED'].includes(name) ? 'compression' : 'tension') :
+            Number.isFinite(value) ? value < 0 ? 'compression' : 'tension' : 'frame';
+        const labelX = (px(x1) + px(x2)) / 2 + (x1 === x2 ? 7 : 0);
+        const labelY = (py(y1) + py(y2)) / 2 - 7;
+        return `<path class="${forceType}" d="M${px(x1)} ${py(y1)}L${px(x2)} ${py(y2)}"/>
+            ${Number.isFinite(value) ? `<text class="truss-member-value" x="${labelX}" y="${labelY}">${numberText(value)}</text>` : ''}`;
     }).join('');
     return workshopFigure(`<svg class="diagram truss-workshop" viewBox="0 0 340 355" role="img"
         aria-label="${t`Five-joint truss with A pinned, B on a roller, and a 90 kN rightward force at E. Supports are 5 m apart and E is 10 m above A.`}">
         <defs>
-            <marker id="workshop-load" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#b53726"/></marker>
-            <marker id="workshop-reaction" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#2945a7"/></marker>
+            <marker id="${id}-load" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#b53726"/></marker>
+            <marker id="${id}-reaction" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#2945a7"/></marker>
         </defs>
         <path class="truss-dim" d="M104 336H234M104 331V341M234 331V341M285 47V307M280 47H290M280 177H290M280 307H290"/>
         <text x="167" y="349" text-anchor="middle">5 m</text><text x="292" y="116">5 m</text><text x="292" y="248">5 m</text>
         ${rods}
         <path class="support-symbol" d="M104 309l-11 14h22zM234 309l-11 14h22z"/>
         <circle class="support-symbol" cx="229" cy="327" r="2.5"/><circle class="support-symbol" cx="239" cy="327" r="2.5"/>
-        <path class="given-load" d="M28 47H94" marker-end="url(#workshop-load)"/><text x="29" y="33">${load} kN</text>
-        ${reactions ? `<path class="reaction-force" d="M43 307H91" marker-end="url(#workshop-reaction)"/><text x="44" y="294">Aₓ</text>
-            <path class="reaction-force" d="M104 297V251" marker-end="url(#workshop-reaction)"/><text x="80" y="248">Aᵧ</text>
-            <path class="reaction-force" d="M234 297V251" marker-end="url(#workshop-reaction)"/><text x="244" y="248">Bᵧ</text>` : ''}
+        <path class="given-load" d="M28 47H94" marker-end="url(#${id}-load)"/><text x="29" y="33">${load} kN</text>
+        ${reactions ? `<path class="reaction-force" d="M43 307H91" marker-end="url(#${id}-reaction)"/><text x="44" y="294">Aₓ</text>
+            <path class="reaction-force" d="M104 297V251" marker-end="url(#${id}-reaction)"/><text x="80" y="248">Aᵧ</text>
+            <path class="reaction-force" d="M234 297V251" marker-end="url(#${id}-reaction)"/><text x="244" y="248">Bᵧ</text>` : ''}
+        ${Object.hasOwn(values, 'Aₓ') ? forceGlyph({ x: 104, y: 307, dx: 1, dy: 0, length: 49, name: 'Aₓ' }, values.Aₓ) : ''}
+        ${Object.hasOwn(values, 'Aᵧ') ? forceGlyph({ x: 104, y: 307, dx: 0, dy: -1, length: 29, name: 'Aᵧ', labelSide: 'right' }, values.Aᵧ) : ''}
+        ${Object.hasOwn(values, 'Bᵧ') ? forceGlyph({ x: 234, y: 307, dx: 0, dy: -1, length: 42, name: 'Bᵧ' }, values.Bᵧ) : ''}
         ${joints}
         ${solved ? `<text x="18" y="342" class="tension-text">${t("Tension")}</text><text x="246" y="342" class="compression-text">${t("Compression")}</text>` : ''}
     </svg>`, points, reactions ? t('The blue arrows show the assumed positive directions. A negative result reverses the corresponding arrow.') : '');
@@ -143,22 +153,24 @@ const workshopDrawings = {
     truss: () => workshopTrussFigure('truss'),
     'truss-reactions': () => workshopTrussFigure('truss-reactions'),
     'truss-solved': () => workshopTrussFigure('truss-solved'),
-    'joint-e': () => workshopFigure(plate(t('Isolated joint E. Applied force goes right. Assumed tension arrows point vertically down in CE and down-right in ED.'), `
+    'joint-e': (omit) => workshopFigure(plate(t('Isolated joint E. Applied force goes right. Assumed tension arrows point vertically down in CE and down-right in ED.'), `
         <circle class="diagram-fill" cx="180" cy="62" r="5"/>
         <path class="diagram-dash" d="M186 62H255V135"/>
         <path class="diagram-line" d="M209 62a29 29 0 0 1-8.5 20.5"/>
-        <path class="diagram-arrow" d="M70 62H172M180 70V137M187 69L257 139"/>
+        <path class="diagram-arrow" d="M70 62H172"/>${omit === 'CE' ? '' : '<path class="diagram-arrow" d="M180 70V137"/>'}
+        ${omit === 'ED' ? '' : '<path class="diagram-arrow" d="M187 69L257 139"/>'}
         <text x="71" y="52">90 kN</text><text x="143" y="142">CE</text><text x="264" y="145">ED</text><text x="186" y="53">E</text>
         <text x="216" y="79">45°</text>`), {}, t('Assumed tension arrows for the two unknown members. Measure the angle from the dashed horizontal.')),
-    'joint-d': () => workshopFigure(plate(t('Isolated joint D. Known compressed ED pushes down-right. Assumed CD tension points left and BD tension down.'), `
+    'joint-d': (omit) => workshopFigure(plate(t('Isolated joint D. Known compressed ED pushes down-right. Assumed CD tension points left and BD tension down.'), `
         <circle class="diagram-fill" cx="229" cy="53" r="5"/>
-        <path class="diagram-arrow" d="M221 53H129M229 61V141M236 60L306 130"/>
+        ${omit === 'CD' ? '' : '<path class="diagram-arrow" d="M221 53H129"/>'}${omit === 'BD' ? '' : '<path class="diagram-arrow" d="M229 61V141"/>'}
+        <path class="diagram-arrow" d="M236 60L306 130"/>
         <text x="121" y="43">CD</text><text x="199" y="144">BD</text><text x="310" y="133">ED</text><text x="236" y="45">D</text>`)),
-    'joint-b': () => workshopFigure(plate(t('Joint B. Known AB pulls left, BD pushes down, and the support reaction acts up. The assumed tension arrow for BC points up-left at 45 degrees from the leftward horizontal.'), `
+    'joint-b': (omit) => workshopFigure(plate(t('Joint B. Known AB pulls left, BD pushes down, and the support reaction acts up. The assumed tension arrow for BC points up-left at 45 degrees from the leftward horizontal.'), `
         <circle class="diagram-fill" cx="245" cy="109" r="5"/>
         <path class="diagram-dash" d="M170 34V109"/>
         <path class="diagram-line" d="M216 109a29 29 0 0 1 8.5-20.5"/>
-        <path class="diagram-arrow" d="M237 109H143M245 117V157M245 101V35M239 103L170 34"/>
+        <path class="diagram-arrow" d="M237 109H143M245 117V157M245 101V35"/>${omit === 'BC' ? '' : '<path class="diagram-arrow" d="M239 103L170 34"/>'}
         <text x="140" y="129">AB</text><text x="257" y="157">BD</text><text x="255" y="40">Bᵧ</text>
         <text x="143" y="33">BC</text><text x="257" y="111">B</text><text x="188" y="96">45°</text>`)),
     'zero-joint': () => workshopFigure(plate(t('Two members lie on one horizontal line through an unloaded joint. A third member meets it diagonally.'), `

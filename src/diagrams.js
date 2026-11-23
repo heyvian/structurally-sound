@@ -78,7 +78,10 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
         ${shapeTargets}
         ${showAnswer ? `<path class="solution-curve" d="${path(question.answer, question.shapes, true)}"/>
             <text x="485" y="258" text-anchor="end">${t`Dashed line · solution`}</text>` :
-        '<g class="plot-preview" visibility="hidden" aria-hidden="true"><path/><circle r="6"/></g>'}`;
+        `<g class="plot-preview" visibility="hidden" aria-hidden="true">
+            <path class="preview-height"/><path class="preview-segment"/><circle r="6"/>
+            <g class="plot-tooltip"><rect width="80" height="25" rx="4"/><text x="9" y="17"></text></g>
+        </g>`}`;
 }
 
 function graphMarkup(question) {
@@ -91,6 +94,7 @@ function graphMarkup(question) {
         <svg id="graph-plot" class="diagram graph" viewBox="0 0 520 263" role="img"
             aria-label="${t`Your diagram sketch`}" aria-describedby="graph-instructions"></svg>
         <p class="graph-placement" data-graph-placement></p>
+        <button class="graph-clear" type="button" data-graph-clear>${t('Clear values')}</button>
         <p class="graph-announcement" role="status" data-graph-announcement></p>
         <fieldset class="diagram-fields"><legend>${question.kind === 'M' ? t('Moment ordinates · kN·m') : t('Shear ordinates · kN')}</legend>
             <div class="station-grid">${question.stations.map((_, i) =>
@@ -113,6 +117,7 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
     const stations = [...root.querySelectorAll('[data-plot-station]')];
     const segments = [...root.querySelectorAll('[data-segment]')];
     const cycles = [...root.querySelectorAll('[data-shape-cycle]')];
+    const clear = root.querySelector('[data-graph-clear]');
     const placement = root.querySelector('[data-graph-placement]');
     const announcement = root.querySelector('[data-graph-announcement]');
     const units = question.kind === 'M' ? 'kN·m' : 'kN';
@@ -139,6 +144,7 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
             const range = `${numberText(question.stations[i].x)}–${numberText(question.stations[i + 1].x)} m`;
             button.textContent = `${range} · ${shapeLabels[answer.shapes[i]] ?? t('Choose shape')}`;
         });
+        clear.disabled = answer.values.every(value => value === null) && answer.shapes.every(shape => shape === null);
         stationStatus();
     };
     const update = () => {
@@ -175,6 +181,17 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         update();
     };
     cycles.forEach((button, i) => button.addEventListener('click', () => cycleShape(i)));
+    clear.addEventListener('click', () => {
+        inputs.forEach(input => { input.value = ''; });
+        segments.forEach(select => { select.value = ''; });
+        answer.values.fill(null);
+        answer.shapes.fill(null);
+        answer.sketched.fill(false);
+        selected = 0;
+        announcement.textContent = t('Diagram values cleared.');
+        update();
+        stations[0].focus();
+    });
     const snappedHeight = event => {
         if (selected < 0) return null;
         const matrix = plot.getScreenCTM();
@@ -187,30 +204,41 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         const scale = graphScale(question, answer.values);
         const value = (point.y - 133) * scale / ((question.kind === 'M' ? 1 : -1) * 94);
         const step = scale / 25;
-        return Math.max(-scale, Math.min(scale, Number(fmt(Math.round(value / step) * step))));
+        return { point, scale, value: Math.max(-scale, Math.min(scale, Number(fmt(Math.round(value / step) * step)))) };
     };
     const clearPreview = () => {
         plot.querySelector('.plot-preview')?.setAttribute('visibility', 'hidden');
         stationStatus();
     };
     const previewAt = event => {
-        const value = snappedHeight(event);
-        if (value === null) { clearPreview(); return; }
+        const snap = snappedHeight(event);
+        if (!snap) { clearPreview(); return; }
+        const { point, scale, value } = snap;
         const x = graphX(question, question.stations[selected].x);
-        const y = graphY(question, graphScale(question, answer.values), value);
+        const y = graphY(question, scale, value);
         const preview = plot.querySelector('.plot-preview');
         preview.setAttribute('visibility', 'visible');
-        preview.querySelector('path').setAttribute('d', `M55 ${y}H485`);
+        preview.querySelector('.preview-height').setAttribute('d', `M55 ${y}H485`);
+        const neighbors = [selected - 1, selected + 1].filter(i => Number.isFinite(answer.values[i]));
+        preview.querySelector('.preview-segment').setAttribute('d', neighbors.map(i =>
+            `M${graphX(question, question.stations[i].x)} ${graphY(question, scale, answer.values[i])}L${x} ${y}`).join(' '));
         const dot = preview.querySelector('circle');
         dot.setAttribute('cx', x);
         dot.setAttribute('cy', y);
+        const tooltip = preview.querySelector('.plot-tooltip');
+        const caption = tooltip.querySelector('text');
+        caption.textContent = `${numberText(value)} ${units}`;
+        const width = caption.getComputedTextLength() + 18;
+        tooltip.querySelector('rect').setAttribute('width', width);
+        tooltip.setAttribute('transform', `translate(${point.x + width + 14 < 520 ? point.x + 14 : point.x - width - 13} ${point.y - 31})`);
         placement.textContent = t`${stationLabel(question.stations, selected)} · ${numberText(value)} ${units}. Click to place.`;
     };
     const sketchAt = event => {
         const hit = event.target.closest('[data-shape-hit]');
         if (hit) { cycleShape(Number(hit.dataset.shapeHit)); return; }
-        const value = snappedHeight(event);
-        if (value === null) return;
+        const snap = snappedHeight(event);
+        if (!snap) return;
+        const { value } = snap;
         announcement.textContent = t`${stationLabel(question.stations, selected)} placed at ${numberText(value)} ${units}.`;
         answer.values[selected] = value;
         inputs[selected].value = studyInputText(value);
@@ -228,6 +256,7 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         plot.removeEventListener('pointerleave', clearPreview);
         [...stations, ...cycles, ...inputs, ...segments].forEach(control => { control.disabled = true; });
         paint(true);
+        clear.disabled = true;
         placement.textContent = '';
     };
 }

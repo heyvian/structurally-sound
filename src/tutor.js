@@ -32,7 +32,8 @@ function workshopRun(i) {
 }
 
 function workshopFinished(i) {
-    return Boolean(workshopProgress.runs[i]?.finished);
+    const run = workshopProgress.runs[i];
+    return Boolean(run?.finished && run.records[workshops[i].turns.length - 1]?.status);
 }
 
 function workshopXp() {
@@ -50,6 +51,10 @@ const escapeTutor = value => String(value ?? '').replace(/[&<>"']/g, character =
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 
 function judgeTurn(turn, input) {
+    if (turn.type === 'fbd') {
+        const correct = sameForces(turn.answer, input);
+        return { correct, answer: t('My free-body diagram'), message: correct ? turn.solution : turn.hint };
+    }
     if (turn.type === 'pick') {
         const choice = turn.choices.find(([value]) => value === input);
         if (!choice) return null;
@@ -112,7 +117,7 @@ function localizedFeedback(turn, record) {
     let input = record.submitted;
     if (input === undefined) {
         if (turn.type === 'pick') input = record.lastChoice;
-        else if (turn.type === 'sketch') input = record.draft;
+        else if (turn.type === 'sketch' || turn.type === 'fbd') input = record.draft;
         else input = parseStudyNumber(record.feedback.answer?.split(' ')[0] || '', 'en');
     }
     if (input == null) return record.feedback;
@@ -142,18 +147,29 @@ function refresherOffer(skill, action = 'data-tutor') {
         <button type="button" ${action}="refresh" data-value="${skill}">${t`Try ${offer.title.toLowerCase()}`}</button></aside>`;
 }
 
-function tutorHistory(workshop, run) {
-    const earlier = workshop.turns.slice(0, run.cursor);
-    if (!earlier.length) return '';
-    const archive = earlier.slice(0, -1);
-    return `${archive.length ? `<details class="tutor-archive"><summary>${t`Earlier turns (${archive.length})`}</summary>
-        ${archive.map((turn, i) => `<details><summary>${turn.prompt}</summary><p>${turn.intro}</p>
-            <p>${escapeTutor(localizedFeedback(turn, run.records[i])?.message || turn.solution)}</p></details>`).join('')}</details>` : ''}
-        <div class="tutor-previous"><p>${escapeTutor(localizedFeedback(earlier.at(-1), run.records[run.cursor - 1])?.message || earlier.at(-1).solution)}</p></div>`;
+function lessonStepRecord(workshop, run, i) {
+    const turn = workshop.turns[i];
+    const feedback = localizedFeedback(turn, run.records[i]);
+    return `<section class="lesson-record" data-lesson-step="${i}" tabindex="-1">
+        <div class="lesson-record-copy"><p class="tutor-step">${t`Step ${i + 1} of ${workshop.turns.length}`}</p>
+        <h3>${turn.prompt}</h3><p>${turn.intro}</p>
+        ${algebraWalkthrough(turn, run.records[i], true)}${recordedCalculation(turn, run.records[i])}
+        ${feedback?.answer ? `<p class="lesson-answer">${escapeTutor(feedback.answer)}</p>` : ''}
+        <p>${escapeTutor(feedback?.message || turn.solution)}</p>
+        ${turn.units ? `<p class="tutor-units"><b>${t('Follow the units')}</b> ${turn.units}</p>` : ''}</div>
+        <figure class="lesson-record-figure">${tutorDrawing(workshop, run, i, false, false)}
+            ${turn.type === 'sketch' ? graphSolution(turn) : ''}</figure>
+    </section>`;
 }
 
-function tutorDrawing(workshop, turn, interactive) {
-    const drawing = workshopDrawings[turn.drawing || workshop.drawing.drawing]();
+function tutorHistory(workshop, run) {
+    return `<div class="tutor-history">${workshop.turns.slice(0, run.cursor).map((_, i) => lessonStepRecord(workshop, run, i)).join('')}</div>`;
+}
+
+function tutorDrawing(workshop, run, i, interactive, current) {
+    const turn = workshop.turns[i];
+    const record = run.records[i];
+    const drawing = progressiveLessonDrawing(workshop, run, i);
     const hotspots = interactive ? (turn.hot || []).map(key => {
         const point = drawing.points[key];
         const choice = turn.choices.find(([value]) => value === key);
@@ -161,14 +177,27 @@ function tutorDrawing(workshop, turn, interactive) {
             aria-label="${escapeTutor(choice[1])}" title="${escapeTutor(choice[1])}" style="--point-x:${point[0]}%;--point-y:${point[1]}%">
             <span aria-hidden="true">${key.length === 1 ? key : '＋'}</span></button>` : '';
     }).join('') : '';
-    return `<aside class="tutor-drawing">
+    const choice = record?.status === 'shown' ? turn.correct?.[0] : record?.lastChoice;
+    const picked = record?.status && turn.hot?.includes(choice) ? drawing.points[choice] : null;
+    const marker = picked ? `<span class="lesson-point-mark" style="--point-x:${picked[0]}%;--point-y:${picked[1]}%" aria-hidden="true">✓</span>` : '';
+    let pastSketch = null;
+    if (current && workshop === workshops[4]) {
+        const from = i > 9 ? 10 : 3;
+        pastSketch = workshop.turns.slice(from, i).findLast((previous, j) => previous.type === 'sketch' && run.records[from + j]?.status);
+    }
+    return `<div class="${current ? 'tutor-drawing' : 'lesson-record-drawing'}">
         <div class="tutor-drawing-title"><span>${turn.drawing ? t('Drawing') : workshop.drawing.caption}</span>${hotspots ? `<span>${t("Tap a point")}</span>` : ''}</div>
-        <div class="tutor-drawing-frame">${drawing.markup}${hotspots}</div>
+        ${turn.type === 'fbd' && !record?.status ? `<figure class="lesson-given"><figcaption>${t('Given structure')}</figcaption>${fbdDrawing(turn, null, false)}</figure>` : ''}
+        <div class="tutor-drawing-frame" ${current ? 'data-lesson-live' : ''}>${drawing.markup}${hotspots}${marker}</div>
         ${drawing.label ? `<p>${drawing.label}</p>` : ''}
-    </aside>`;
+        ${lessonValues(workshop, run, i, current)}
+        ${current && (drawing.progress || pastSketch) ? `<details class="lesson-drawing-progress" open><summary>${t('Drawing so far')}</summary>
+            ${drawing.progress || graphSolution(pastSketch)}</details>` : ''}
+    </div>`;
 }
 
-function tutorInputs(turn, record, isRefresher) {
+function tutorInputs(workshop, i, record, isRefresher) {
+    const turn = workshop.turns[i];
     if (record.status) {
         return turn.type === 'sketch' ? `<div class="tutor-solution-plot">${graphSolution(turn)}</div>` : '';
     }
@@ -178,12 +207,18 @@ function tutorInputs(turn, record, isRefresher) {
                 ${record.lastChoice === id ? 'class="previous-choice"' : ''}>${name}</button>`).join('')}
         </div>`;
     }
+    if (turn.type === 'fbd') return `<fieldset class="lesson-fbd-options"><legend>${t('Build the free-body diagram')}</legend>
+        ${turn.opts.map((option, i) => `<button data-tutor="fbd-option" data-value="${i}" type="button"
+            aria-pressed="${record.draft?.includes(i) || false}">${option}</button>`).join('')}
+        <button class="primary" data-tutor="check-fbd" type="button" ${record.draft?.length ? '' : 'disabled'}>${t('Check my sketch')}</button>
+    </fieldset>`;
     if (turn.type === 'sketch') return `<div class="tutor-sketch">${graphMarkup(turn)}</div>
         <button class="primary" type="button" data-tutor="check-sketch" disabled>${t`Check my sketch`}</button>`;
     const fieldId = isRefresher ? 'refresher-answer' : 'workshop-answer';
-    const calculator = turn.calculation ? `<details class="tutor-calculator"><summary>${t`Try it in the formula`}</summary>
-        <form>${formulaFields(turn.calculation)}<button type="submit">${t`Calculate`}</button><div role="status" data-tutor-result></div></form></details>` : '';
+    const calculator = turn.calculation ? guidedCalculation(turn.calculation) : '';
+    const direction = miniForce(workshop, i, diagramDraft(record.draft, record.draftLocale));
     return `${calculator}<form class="tutor-number-form">
+        ${direction ? `<svg class="lesson-mini-force" data-lesson-mini viewBox="0 0 185 96" aria-hidden="true">${direction}</svg>` : ''}
         <div class="tutor-answer-field">
             <label for="${fieldId}">${turn.unit ? t`Answer in ${turn.unit}` : t('Answer')}</label>
             <div><input name="tutor-answer" type="text" inputmode="decimal" autocomplete="off"
@@ -210,18 +245,19 @@ function tutorTurn(workshop, run, isRefresher) {
     const turn = workshop.turns[run.cursor];
     const record = run.records[run.cursor] ||= {};
     const refs = [...new Set([...(turn.refs || []), ...(workshop.refs || [])])];
-    return `<div class="tutor-board">
-        ${tutorDrawing(workshop, turn, !record.status)}
+    return `<div class="tutor-board" data-active-step="${run.cursor}">
+        ${tutorDrawing(workshop, run, run.cursor, !record.status, true)}
         <section class="tutor-thread" aria-label="${t`Conversation with Val`}">
-            ${isRefresher ? '' : tutorHistory(workshop, run)}
             <div class="tutor-active">
                 <p class="tutor-step">${t`Step ${run.cursor + 1} of ${workshop.turns.length}`}</p>
                 ${valNote(`<p>${turn.intro}</p>`)}
                 <h2 class="tutor-prompt" tabindex="-1">${turn.prompt}</h2>
                 ${turn.units ? `<p class="tutor-units"><b>${t`Follow the units`}</b> ${turn.units}</p>` : ''}
+                ${algebraWalkthrough(turn, record, Boolean(record.status))}
                 ${!record.status ? tutorFeedback(turn, record) : ''}
-                ${tutorInputs(turn, record, isRefresher)}
+                ${tutorInputs(workshop, run.cursor, record, isRefresher)}
                 ${record.status ? tutorFeedback(turn, record) : ''}
+                ${record.status ? recordedCalculation(turn, record) : ''}
                 <div class="tutor-controls">
                     ${run.cursor > 0 ? `<button type="button" data-tutor="back">${t("‹ Previous step")}</button>` : ''}
                     ${record.status ? `<button type="button" class="primary" data-tutor="next">${run.cursor + 1 === workshop.turns.length ? t('Finish') : t('Continue')} →</button>` :
@@ -246,9 +282,11 @@ function renderTutor(index, focus = 'title') {
                 <h1 tabindex="-1">${workshop.title}</h1></div>
             <progress value="${run.cursor}" max="${workshop.turns.length}" aria-label="${t`Workshop steps complete`}"></progress>
         </div>
-        ${complete ? `<article class="tutor-finish"><div class="tutor-celebrate val-pop">${valPortrait('cheer')}</div>
+        ${tutorHistory(workshop, run)}
+        ${complete ? `<article class="tutor-finish" tabindex="-1"><div class="tutor-celebrate val-pop">${valPortrait('cheer')}</div>
             <h2>${t`Workshop complete`}</h2><p>${workshop.outcome}</p>
             <div class="toolbar"><button data-tutor="review" type="button">${t`Review our conversation`}</button>
+                <button data-tutor="print-workshop" type="button">${t('Print lesson')}</button>
                 ${button(t('Try practice questions'), 'practice', index)}
                 ${following === undefined ? button(t('Practice exams'), 'final', '', 'primary') :
                     button(t('Next topic →'), 'unit', following, 'primary')}</div>
@@ -256,16 +294,15 @@ function renderTutor(index, focus = 'title') {
     </section>`;
     const root = app.querySelector('.tutor-session');
     bindTutor(root, workshop, run, target => renderTutor(index, target), index);
-    if (focus === 'title') focusPage();
+    if (focus === 'title' && run.cursor === 0) focusPage();
     else if (focus === 'feedback') {
         const target = root.querySelector('.tutor-feedback');
         target?.focus({ preventScroll: true });
         target?.scrollIntoView({ block: 'nearest' });
     } else {
-        const prompt = root.querySelector('.tutor-prompt') || root.querySelector('h1');
+        const prompt = root.querySelector('.tutor-prompt, .tutor-finish') || root.querySelector('h1');
         prompt?.focus({ preventScroll: true });
-        root.querySelector('.tutor-board')?.scrollIntoView({ block: 'start' });
-        if (complete) window.scrollTo(0, 0);
+        root.querySelector('.tutor-board, .tutor-finish')?.scrollIntoView({ block: 'start' });
     }
 }
 
@@ -344,6 +381,7 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         input.addEventListener('input', () => {
             record.draft = input.value;
             record.draftLocale = locale;
+            updateLessonDrawing(root, workshop, run.cursor, input.value);
             persist();
         });
         form.addEventListener('submit', event => {
@@ -354,6 +392,9 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
     const calculator = root.querySelector('.tutor-calculator form');
     if (calculator) {
         const result = calculator.querySelector('[data-tutor-result]');
+        const calculation = turn.calculation;
+        const showCalculation = values => calculation.paper ? paperResult(calculation, values) : formulaSubstitution(calculation, values);
+        if (record.substitution) result.innerHTML = showCalculation(record.substitution);
         const fields = [...calculator.querySelectorAll('[data-formula-input]')];
         fields.forEach((field, i) => {
             field.value = localizeDraft(record.givens?.[i], record.givenLocale);
@@ -362,6 +403,7 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
                 record.givenLocale = locale;
                 field.removeAttribute('aria-invalid');
                 result.textContent = '';
+                delete record.substitution;
                 persist();
             });
         });
@@ -378,7 +420,14 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
                 invalid[0].focus();
                 return;
             }
-            result.innerHTML = formulaSubstitution(turn.calculation, values);
+            record.substitution = values;
+            result.innerHTML = showCalculation(values);
+            if (calculation.paper && form) {
+                const input = form.elements['tutor-answer'];
+                input.value = studyInputText(calculation.calculate(...values));
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            persist();
         });
     }
     if (turn?.type === 'sketch' && !record.status) {
@@ -394,6 +443,25 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         switch (control.dataset.tutor) {
             case 'pick': submit(control.dataset.value); break;
             case 'check-sketch': if (currentSketch) submit(currentSketch); break;
+            case 'fbd-option': {
+                const chosen = new Set(record.draft || []);
+                const value = Number(control.dataset.value);
+                if (chosen.has(value)) chosen.delete(value); else chosen.add(value);
+                record.draft = [...chosen];
+                control.setAttribute('aria-pressed', String(chosen.has(value)));
+                root.querySelector('[data-lesson-live]').innerHTML = fbdDrawing(turn, record.draft);
+                root.querySelector('[data-tutor="check-fbd"]').disabled = !chosen.size;
+                persist();
+                break;
+            }
+            case 'check-fbd': submit(record.draft); break;
+            case 'algebra-next': {
+                record.algebra = Math.min(turn.algebra.length, (record.algebra || 1) + 1);
+                root.querySelector('[data-algebra-work]').outerHTML = algebraWalkthrough(turn, record);
+                root.querySelector('[data-tutor="algebra-next"]')?.focus({ preventScroll: true });
+                persist();
+                break;
+            }
             case 'sign': {
                 const input = form?.elements['tutor-answer'];
                 if (!input) break;
@@ -419,15 +487,33 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
                 redraw('turn');
                 break;
             case 'back':
-                run.cursor--;
-                persist();
-                redraw('turn');
+                if (workshopIndex == null) { run.cursor--; redraw('turn'); }
+                else scrollLessonStep(root, run.cursor - 1);
                 break;
             case 'review':
-                run.cursor = 0;
-                persist();
-                redraw('turn');
+                scrollLessonStep(root, 0);
                 break;
+            case 'print-workshop': printWorkshop(workshop, run); break;
         }
     });
+}
+
+function scrollLessonStep(root, index) {
+    const section = root.querySelector(`[data-lesson-step="${index}"]`);
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ block: 'start' });
+}
+
+function printWorkshop(workshop, run) {
+    const print = document.createElement('article');
+    print.className = 'lesson-print';
+    print.innerHTML = `<h1>${workshop.title}</h1><p>${workshop.outcome}</p>
+        ${workshop.turns.map((_, i) => lessonStepRecord(workshop, run, i)).join('')}`;
+    document.body.append(print);
+    document.body.classList.add('printing-lesson');
+    window.addEventListener('afterprint', () => {
+        print.remove();
+        document.body.classList.remove('printing-lesson');
+    }, { once: true });
+    window.print();
 }

@@ -1,16 +1,15 @@
 function valPortrait(pose, label = '') {
     return `<span class="val-portrait">
-        <img class="val-art" src="src/visuals/val-${pose}.webp?v=7" width="440" height="540" alt="${label}" decoding="async">
-        <img class="val-art val-gold" src="src/visuals/val-${pose}-gold.webp" width="440" height="540" alt="" decoding="async">
+        <img class="val-art" src="src/visuals/val-${pose}.webp?v=9" width="440" height="540" alt="${label}" decoding="async">
+        <img class="val-art val-gold" src="src/visuals/val-${pose}-gold.webp?v=9" width="440" height="540" alt="" decoding="async">
     </span>`;
 }
 
 function heroVal() {
-    return `<div class="hero-val val-entrance"><div class="val-gaze">
+    return `<div class="hero-val val-entrance">
+        <canvas class="val-model" aria-hidden="true"></canvas>
         ${valPortrait('hello', t('Val, a little glass tower with wide eyes'))}
-        <span class="val-eye val-eye-left" aria-hidden="true"></span>
-        <span class="val-eye val-eye-right" aria-hidden="true"></span>
-    </div></div>`;
+    </div>`;
 }
 
 function updateValGold() {
@@ -24,33 +23,35 @@ function updateValGold() {
     document.documentElement.style.setProperty('--val-gold', done / total);
 }
 
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-let gazeFrame;
-let pointer;
-function resetValGaze() {
-    pointer = undefined;
-    const gaze = document.querySelector('.val-gaze');
-    if (gaze) ['--look-x', '--look-y', '--yaw', '--pitch'].forEach(property => gaze.style.removeProperty(property));
+let valModelScripts;
+function loadValScript(path) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = path;
+        script.onload = resolve;
+        script.onerror = () => {
+            script.remove();
+            reject(new Error(`Unable to load ${path}`));
+        };
+        document.head.append(script);
+    });
 }
 
-window.addEventListener('pointermove', event => {
-    if (reducedMotion.matches || event.pointerType !== 'mouse') return;
-    pointer = { x: event.clientX, y: event.clientY };
-    if (gazeFrame) return;
-    gazeFrame = requestAnimationFrame(() => {
-        gazeFrame = undefined;
-        const gaze = document.querySelector('.val-gaze');
-        if (!pointer || !gaze || reducedMotion.matches) return;
-        const { x, y, width, height } = gaze.parentElement.getBoundingClientRect();
-        const clamp = value => Math.max(-1, Math.min(1, value));
-        const horizontal = clamp((pointer.x - x - width * .35) / Math.max(105, width * .76));
-        const vertical = clamp((pointer.y - y - height * .38) / Math.max(80, height * .56));
-        gaze.style.setProperty('--look-x', `${horizontal * 28}%`);
-        gaze.style.setProperty('--look-y', `${vertical * 16}%`);
-        gaze.style.setProperty('--yaw', `${horizontal * 4}deg`);
-        gaze.style.setProperty('--pitch', `${vertical * -3}deg`);
-    });
-}, { passive: true });
-document.documentElement.addEventListener('pointerleave', resetValGaze);
-window.addEventListener('blur', resetValGaze);
-reducedMotion.addEventListener('change', resetValGaze);
+async function showValModel() {
+    const canvas = document.querySelector('.val-model');
+    if (!canvas || !globalThis.WebGL2RenderingContext) return;
+    try {
+        valModelScripts ||= loadValScript('src/vendor/three-r181.min.js').then(() => loadValScript('src/val-3d.js?v=10'));
+        await valModelScripts;
+    } catch {
+        valModelScripts = undefined;
+        return;
+    }
+    if (!canvas.isConnected) return;
+    const gold = Number(document.documentElement.style.getPropertyValue('--val-gold'));
+    try {
+        globalThis.mountValModel(canvas, gold);
+    } catch {
+        // The complete rendered portrait stays visible if WebGL is unavailable.
+    }
+}

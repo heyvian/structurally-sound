@@ -28,6 +28,7 @@ const roofLineLoad = {
     inputs: [['q', t('Roof pressure'), 'kPa', 3], ['bₜ', t('Tributary width'), 'm', 4]],
     calculate: (q, width) => q * width,
     substitute: (q, width) => `(${q} kN/m²) × (${width} m)`,
+    paper: { numerator: [0, '×', 1] },
 };
 const eulerCalculation = {
     symbol: 'Pcr', expression: 'π²EI/(KL)²', unit: 'kN',
@@ -35,6 +36,7 @@ const eulerCalculation = {
         ['K', t('End restraint factor'), '', 1], ['L', t('Physical unbraced length'), 'mm', 4000]],
     calculate: (elasticity, inertia, k, length) => Math.PI ** 2 * elasticity * inertia / (k * length) ** 2 / 1000,
     substitute: (elasticity, inertia, k, length) => `π² × (${elasticity} N/mm²) × (${inertia} mm⁴) ÷ (${k} × ${length} mm)² ÷ (1,000 N/kN)`,
+    paper: { numerator: ['π² ×', 0, '×', 1], denominator: ['(', 2, '×', 3, ')²'], conversion: '÷ (1,000 N/kN)' },
 };
 
 // Reuse the beam solver for sketch stations and worked solutions.
@@ -493,3 +495,54 @@ const refreshers = {
         ],
     },
 };
+
+workshops[2].turns.push({ ...fbdQuestion('cantilever'),
+    intro: t('Now put the support rules into practice. Start with the fixed beam in the upper drawing. Then use the buttons to build the isolated beam below.'),
+    solution: fbdCases.cantilever.solution,
+});
+
+// The first numerical use of each method includes a guided substitution.
+workshops[1].turns[2].calculation = paperCalculation('Fₓ', 'kN',
+    [['F', t('Force magnitude'), 'kN', 10], ['θ', t('Angle from +x'), '°', 30]],
+    [0, '× cos(', 1, ')'], null, (force, angle) => force * Math.cos(angle * Math.PI / 180));
+workshops[3].turns[3].calculation = paperCalculation('Mₐ', 'kN·m',
+    [['Fᵧ', t('Signed vertical force'), 'kN', -24], ['d', t('Perpendicular lever arm'), 'm', 2]],
+    [0, '×', 1], null, (force, arm) => force * arm);
+workshops[3].turns[6].calculation = paperCalculation('Bᵧ', 'kN',
+    [['|M₁|', t('Moment magnitude from the point load'), 'kN·m', 48], ['|M₂|', t('Moment magnitude from the distributed load'), 'kN·m', 192],
+        ['L', t('Span between supports'), 'm', 8]],
+    [0, '+', 1], [2], (first, second, length) => (first + second) / length);
+workshops[4].turns[5].calculation = paperCalculation('M(4)', 'kN·m',
+    [['Δx', t('Base of the shear triangle'), 'm', 4], ['V₀', t('Height of the shear triangle'), 'kN', 24]],
+    ['½ ×', 0, '×', 1], null, (base, height) => .5 * base * height);
+workshops[5].turns[1].calculation = paperCalculation('σ', 'MPa',
+    [['F', t('Axial force in newtons'), 'N', 24000], ['A', t('Cross-sectional area'), 'mm²', 150]],
+    [0], [1], (force, area) => force / area);
+workshops[6].turns[2].calculation = paperCalculation('Iweb', 'mm⁴',
+    [['b', t('Width of the web'), 'mm', 20], ['h', t('Depth of the web'), 'mm', 80]],
+    [0, '× (', 1, ')³'], ['12'], (width, depth) => width * depth ** 3 / 12);
+workshops[8].turns[6].calculation = paperCalculation('ED', 'kN',
+    [['P', t('Rightward load at E'), 'kN', 90], ['θ', t('Angle from horizontal'), '°', 45]],
+    ['−', 0], ['cos(', 1, ')'], (load, angle) => -load / Math.cos(angle * Math.PI / 180));
+workshops[10].turns[2].calculation = paperCalculation('L', 'm',
+    [['b', t('Horizontal run'), 'm', 4], ['h', t('Vertical rise'), 'm', 3]],
+    ['√((', 0, ')² + (', 1, ')²)'], null, Math.hypot);
+
+workshops[10].turns[5].algebra = [
+    ['3x + 4 = 19', t('Start with the equation as given.')],
+    ['3x + 4 − 4 = 19 − 4', t('Subtract 4 from both sides. The operations keep the two sides equal.')],
+    ['3x = 15', t('On the left, +4 and −4 cancel. On the right, 19 − 4 gives 15.')],
+    ['3x ÷ 3 = 15 ÷ 3', t('Divide both sides by 3 to undo multiplication by 3.')],
+    ['x = 5', t('Check by putting 5 back into the original equation. 3 × 5 + 4 = 19.')],
+];
+workshops[2].turns[3].algebra = [
+    ['Aₓ + 9 kN = 0', t('Write the assumed support force plus the rightward applied force.')],
+    ['Aₓ + 9 kN − 9 kN = 0 − 9 kN', t('Subtract 9 kN on both sides. That is why the term on the right is negative.')],
+    ['Aₓ = −9 kN', t('The minus sign reverses the assumed arrow. Aₓ points left.')],
+];
+workshops[3].turns[6].algebra = [
+    ['(8 m) Bᵧ − 48 kN·m − 192 kN·m = 0', t('Start with moment equilibrium about A.')],
+    ['(8 m) Bᵧ − 240 kN·m = 0', t('Combine the two clockwise moments on the left.')],
+    ['(8 m) Bᵧ − 240 kN·m + 240 kN·m = 0 + 240 kN·m', t('Add the same moment to both sides to cancel the negative term on the left.')],
+    ['Bᵧ = (240 kN·m) ÷ (8 m) = 30 kN', t('Divide both sides by the 8 m arm. The metres cancel and the result is a force.')],
+];

@@ -103,7 +103,7 @@ function bucklingComparison() {
 }
 
 let beamFigureNumber = 0;
-function beamFigure(beam, reactions = []) {
+function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot, live } = {}) {
     const { L, a, b, points, udls } = beam;
     const id = `beam-${beamFigureNumber++}`;
     const x = position => 48 + position / L * 424;
@@ -114,10 +114,10 @@ function beamFigure(beam, reactions = []) {
         ...udls.map(w => t`${w.w} kilonewtons per metre downward from ${w.s} to ${w.e} metres`),
     ].join('. ');
     const supports = [a, b].map((position, i) => `
-        <path d="M${x(position)} ${y + 1}l-12 17h24Z" fill="#fff9e8" stroke="#23343a" stroke-width="1.6"/>
+        ${isolated ? `<circle cx="${x(position)}" cy="${y}" r="3" fill="#23343a"/>` : `<path d="M${x(position)} ${y + 1}l-12 17h24Z" fill="#fff9e8" stroke="#23343a" stroke-width="1.6"/>
         ${i ? [-6, 6].map(offset => `<circle cx="${x(position) + offset}" cy="${y + 23}" r="3"
                 fill="white" stroke="#23343a"/>`).join('')
-            : `<rect x="${x(position) - 14}" y="${y + 18}" width="28" height="7" fill="url(#${id}-ground)"/>`}
+            : `<rect x="${x(position) - 14}" y="${y + 18}" width="28" height="7" fill="url(#${id}-ground)"/>`}`}
         <text x="${x(position)}" y="${y + 37}" text-anchor="middle" font-size="11">${'AB'[i]}</text>`).join('');
     const positions = [...new Set([0, a, b, L, ...points.map(p => p.x), ...udls.flatMap(w => [w.s, w.e])])]
         .sort((left, right) => left - right);
@@ -154,8 +154,15 @@ function beamFigure(beam, reactions = []) {
             <text x="${x((s + e) / 2)}" y="35" text-anchor="middle" fill="#a33a25" font-size="12">${w} kN/m</text>`).join('')}
         ${reactions.map(i => {
             const [path, tx, ty, name] = drafts[i];
+            if (Object.hasOwn(values, i) || live === i) {
+                const position = i === 2 || i === 4 ? b : a;
+                const horizontal = i === 0 || i === 4;
+                return `<g ${live === i ? 'data-draft-force' : ''}>${forceGlyph({ x: x(position), y, dx: horizontal ? 1 : 0,
+                    dy: horizontal ? 0 : -1, name, unit: 'kN', labelSide: x(position) > 400 ? 'left' : 'right' }, values[i])}</g>`;
+            }
             return `<path d="${path}" ${reactionArrow}/><text x="${tx}" y="${ty}" fill="#155d68" font-size="12">${name}</text>`;
         }).join('')}
+        ${pivot !== undefined ? `<circle class="moment-pivot" cx="${x(pivot)}" cy="${y}" r="6"/>` : ''}
         <path d="M${x(0)} 138H${x(L)}" stroke="#65766b"/>
         ${positions.map(position => `<path d="M${x(position)} 130V144m-4-2 8-8" stroke="#65766b"/>
             <text x="${x(position)}" y="155" text-anchor="middle" font-size="11">${position} m</text>`).join('')}
@@ -167,11 +174,13 @@ function trussFig(){return `<svg class="diagram" viewBox="0 0 420 240" role="img
 const lateralNodes={A:[0,0],B:[5,0],C:[0,5],D:[5,5],E:[0,10]},lateralMembers=['AC','AB','BC','BD','CE','CD','ED'];
 function lateralFig(){let px=x=>96+x*29,py=y=>338-y*29;return `<svg class="diagram" viewBox="0 0 340 395" role="img" aria-label="${t`Five joint truss, two 5 metre bays vertically and 5 metre width, 90 kN to the right at E`}"><defs><marker id="latArrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="#b84d34"/></marker></defs>${lateralMembers.map(m=>{let a=lateralNodes[m[0]],b=lateralNodes[m[1]];return `<path d="M${px(a[0])} ${py(a[1])}L${px(b[0])} ${py(b[1])}" stroke="#26343b" stroke-width="3"/>`}).join('')}${Object.entries(lateralNodes).map(([name,[x,y]])=>`<circle cx="${px(x)}" cy="${py(y)}" r="4" fill="white" stroke="#26343b"/><text x="${px(x)+(x===0?-16:10)}" y="${py(y)-8}" font-size="13" font-weight="bold">${name}</text>`).join('')}<path d="M20 48H89" stroke="#b84d34" stroke-width="2.6" marker-end="url(#latArrow)"/><text x="18" y="37" fill="#a43b27" font-size="13">90 kN</text><path d="M96 340l-12 17h24ZM241 340l-12 17h24Z" fill="#f9f4e5" stroke="#26343b"/><circle cx="235" cy="361" r="3" fill="white" stroke="#26343b"/><circle cx="247" cy="361" r="3" fill="white" stroke="#26343b"/><path d="M96 375H241M96 369V381M241 369V381M281 48V338M275 48H287M275 193H287M275 338H287" stroke="#65766b"/><g font-size="11" fill="#26343b"><text x="168" y="391" text-anchor="middle">5 m</text><text x="289" y="125">5 m</text><text x="289" y="270">5 m</text><text x="159" y="210">45°</text></g></svg>`}
 
+let plateNumber = 0;
 function plate(label, drawing, height = 180) {
+    const arrow = `plate-arrow-${plateNumber++}`;
     return `<svg class="diagram plate" viewBox="0 0 460 ${height}" role="img" aria-label="${label}">
-        <defs><marker id="plate-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <defs><marker id="${arrow}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
             <path d="M0 0L6 3L0 6Z" fill="#a7462e"/>
-        </marker></defs>${drawing}</svg>`;
+        </marker></defs><g style="--diagram-arrow:url(#${arrow})">${drawing}</g></svg>`;
 }
 
 const plates = {

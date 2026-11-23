@@ -214,28 +214,28 @@ h1:focus, h2:focus { outline: none; }
     transform: skewY(-12deg);
 }
 
-.hero-val { width: min(77%, 332px); transform-origin: 50% 87%; }
+.hero-val {
+    position: relative;
+    width: min(77%, 332px);
+    transform-origin: 50% 87%;
+}
 .val-portrait { display: block; position: relative; }
+.hero-val .val-portrait { filter: drop-shadow(16px 17px 0 #282e3228) drop-shadow(3px 4px 4px #181e2869); }
 .val-art { display: block; width: 100%; height: auto; }
 .val-gold { position: absolute; inset: 0; opacity: var(--val-gold, 0); transition: opacity .4s ease-out; }
-.val-gaze {
-    position: relative;
-    transform: perspective(650px) rotateY(var(--yaw, 0deg)) rotateX(var(--pitch, 0deg));
-    transform-origin: 50% 54%;
-    transition: transform 200ms ease-out;
-    filter: drop-shadow(16px 17px 0 #282e3228) drop-shadow(3px 4px 4px #181e2869);
-}
-.val-eye {
+.val-model {
     position: absolute;
-    width: 8.636%;
-    height: 9.63%;
-    background: url("visuals/val-eye.webp") center / 100% 100% no-repeat;
-    transform: translate(calc(-50% + var(--look-x, 0%)), calc(-50% + var(--look-y, 0%)));
-    transition: transform 130ms ease-out;
-    pointer-events: none;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    visibility: hidden;
+    touch-action: pan-y pinch-zoom;
+    cursor: grab;
 }
-.val-eye-left { left: 26.6%; top: 37.6%; }
-.val-eye-right { left: 39.8%; top: 38%; }
+.val-model[data-rendered] { visibility: visible; }
+.val-model[data-rendered] + .val-portrait { opacity: 0; pointer-events: none; }
+.val-model:active { cursor: grabbing; }
 
 .eyebrow, .sectionmark, .duration { font: 700 11px/1.5 var(--mono); letter-spacing: .045em; text-transform: uppercase; }
 .val-entrance { animation: val-slide .5s cubic-bezier(.22,1,.36,1) both; }
@@ -575,7 +575,7 @@ legend { padding: 0 6px; font: 700 13px var(--mono); }
 .diagram-line, .diagram-fill, .diagram-dash, .diagram-arrow { stroke: var(--ink); stroke-width: 2; fill: none; }
 .diagram-fill { fill: #dbe5f1; }
 .diagram-dash { stroke-dasharray: 5 3; stroke-width: 1.5; }
-.diagram-arrow { stroke: #a7462e; marker-end: url(#plate-arrow); }
+.diagram-arrow { stroke: #a7462e; marker-end: var(--diagram-arrow); }
 .curve-point circle { fill: #fffdf6; stroke: var(--ink); }
 .curve-point[data-point] { cursor: pointer; }
 .curve-point.selected-point circle { fill: var(--acid); stroke: var(--blue); stroke-width: 2px; }
@@ -592,6 +592,10 @@ legend { padding: 0 6px; font: 700 13px var(--mono); }
 .graph-shape-hit:hover { stroke: #204e9f2e; }
 .plot-preview { pointer-events: none; }
 .plot-preview path { fill: none; stroke: #a26617; stroke-dasharray: 3 4; }
+.plot-preview .preview-segment { stroke: #2945a7; stroke-width: 2.5; stroke-dasharray: 6 4; }
+.plot-tooltip rect { fill: #19284b; }
+.plot-tooltip text { fill: white; font-weight: 700; }
+.graph-clear { min-height: 36px; padding: 5px 8px; }
 .plot-preview circle { stroke: #714704; stroke-width: 2; fill: #f6d28d; }
 .graph-station-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
 .graph-station-buttons button { padding: 7px 9px; min-height: 36px; font: 700 12px/1.3 var(--mono); }
@@ -729,7 +733,7 @@ tbody tr:nth-child(even) { background: #f0eee3; }
 @media (prefers-reduced-motion: reduce) {
     button { transition: none; }
     .val-entrance, .val-pop { animation: none; }
-    .val-gaze, .val-eye, .val-gold { transition: none; }
+    .val-gold { transition: none; }
 }
 
 @media print {

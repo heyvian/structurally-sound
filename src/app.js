@@ -27,13 +27,13 @@ function readProgress() {
 }
 
 const state = readProgress();
-const ref = (i, j) => ({ ...units[i].q[j], key: `${i}-${j}`, topic: units[i].title });
+const ref = (i, j) => ({ ...units[i].q[j], key: `${i}-${j}`, topic: units[i].title, topicIndex: i });
 const unitQuestions = units.map((unit, i) => unit.q.map((_, j) => ref(i, j)));
 const calculationCards = lessonPlans.map((plan, i) => ({
-    ...plan.calculation, key: `formula-${i}`, type: 'formula', topic: units[i].title, step: t('Formula walkthrough'),
+    ...plan.calculation, key: `formula-${i}`, type: 'formula', topic: units[i].title, topicIndex: i, step: t('Formula walkthrough'),
 }));
 const guidedQuestions = lessonPlans.map((plan, i) => plan.guided.map((question, j) => ({
-    ...question, key: `guided-${i}-${j}`, topic: units[i].title, step: t('Do it together'),
+    ...question, key: `guided-${i}-${j}`, topic: units[i].title, topicIndex: i, step: t('Do it together'),
 })));
 
 function beamWorkshopQuestions(beam, key) {
@@ -68,9 +68,10 @@ const trussPractice = latqs.map((question, j) => ({
 const trussExam = trussQs.map((question, j) => ({
     ...question, key: `truss-exam-${j}`, topic: t('Triangular truss analysis'),
 }));
+const diagramExercises = Object.keys(fbdCases).map(kind => ({ ...fbdQuestion(kind), key: `fbd-${kind}`, topic: units[2].title, topicIndex: 2 }));
 const questionBank = new Map([
     ...unitQuestions.flat(), ...calculationCards, ...guidedQuestions.flat(),
-    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam,
+    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam, ...diagramExercises,
 ].map(question => [question.key, question]));
 
 let session;
@@ -200,6 +201,7 @@ function home() {
         </section>
         ${learningProgress()}
     </div>`);
+    showValModel();
 }
 
 function practiceCards(questions, step = t('Practice')) {
@@ -215,7 +217,7 @@ function practiceMenu() {
 
 function startPractice(i) {
     if (!unitQuestions[i]) return;
-    const questions = [calculationCards[i], ...guidedQuestions[i], ...unitQuestions[i]];
+    const questions = [calculationCards[i], ...guidedQuestions[i], ...(i === 2 ? diagramExercises : []), ...unitQuestions[i]];
     begin(practiceCards(questions), { mode: 'practice', unit: i, title: t`Practice: ${units[i].title}` });
 }
 
@@ -349,7 +351,10 @@ function interaction(question) {
                 </select></label>`).join('')}</fieldset>`;
         }
         case 'fbd':
-            return `<div id="fbd-figure">${beamFigure(question.b || center)}</div><p>${t`Select every applicable reaction to draw it on the beam.`}</p>${options(question, true)}`;
+            return `<figure class="practice-drawing"><figcaption>${t('Given structure')}</figcaption>${fbdDrawing(question, null, false)}</figure>
+                <figure class="practice-drawing"><figcaption>${t('Your free-body diagram')}</figcaption>
+                <div id="fbd-figure">${fbdDrawing(question, [])}</div></figure>
+                <p>${t('Select an arrow to add or remove it from the diagram.')}</p>${options(question, true)}`;
         case 'steel':
             return `${steelTable(question.rows)}<label class="profile-answer">${t`Choose a profile`}
                 <select id="profile-answer"><option value="">${t`Choose an answer`}</option>
@@ -401,7 +406,7 @@ function render() {
             <div class="study-val val-entrance">${valPortrait('guide')}</div>
         </div>
         ${question.setup ? `<p class="question-setup">${question.setup}</p>` : ''}
-        ${question.type === 'fbd' ? '' : figureFor(question)}
+        ${question.type === 'fbd' || question.type === 'stress' ? '' : practiceDrawingPanel(question)}
         ${exam ? '' : questionMethod(question)}
         ${interaction(question)}
         <div id="feedback" aria-live="polite"></div>
@@ -429,7 +434,10 @@ function render() {
     }
     if (question.type === 'number') {
         const field = document.getElementById('number-answer');
-        field.addEventListener('input', () => setAnswer(parseStudyNumber(field.value)));
+        field.addEventListener('input', () => {
+            setAnswer(parseStudyNumber(field.value));
+            updatePracticeForce(app, question, field.value);
+        });
     }
     app.querySelectorAll('#number-answer, [data-formula-input]').forEach(field => {
         field.addEventListener('keydown', event => {
@@ -495,7 +503,7 @@ function choose(index) {
         element.setAttribute('aria-pressed', String(picked.includes(Number(element.dataset.choice)))));
     app.querySelectorAll('[data-point]').forEach(element =>
         element.classList.toggle('selected-point', Number(element.dataset.point) === index));
-    if (multi) document.getElementById('fbd-figure').innerHTML = beamFigure(question.b || center, picked);
+    if (multi) document.getElementById('fbd-figure').innerHTML = fbdDrawing(question, picked);
     setAnswer(multi ? (picked.length ? picked : null) : index);
 }
 
@@ -504,7 +512,7 @@ function grade(question, input) {
         return Number.isFinite(input) && Math.abs(input - question.answer) <= Math.max(0.000005, Math.abs(question.answer) * .005);
     }
     if (question.type === 'fbd') {
-        return input.length === question.answer.length && question.answer.every(value => input.includes(value));
+        return sameForces(question.answer, input);
     }
     if (question.type === 'match') {
         return question.answer.every((value, i) => input[i] === value);
@@ -602,10 +610,7 @@ function renderStudyFeedback(result, calculation) {
     feedback.innerHTML = `${calculation}<div class="feedback ${correct ? '' : 'bad'}">
         <div class="feedback-val val-pop">${valPortrait(correct ? 'cheer' : 'think')}</div>
         <div><p><strong>${correct ? t('Structurally sound!') : t('Here’s how to work it out')}</strong></p>
-        <p>${question.explain}</p><small>${message}</small></div></div>${refresherOffer(result.suggested, 'data-action')}`;
-    if (question.type === 'fbd') {
-        document.getElementById('fbd-figure').innerHTML = beamFigure(question.b || center, question.answer);
-    }
+        <p>${question.explain}</p><small>${message}</small></div></div>${practiceDrawingPanel(question, true)}${refresherOffer(result.suggested, 'data-action')}`;
     if (showGraphAnswer) {
         showGraphAnswer();
         feedback.insertAdjacentHTML('beforeend', graphSolution(question, false));
@@ -659,7 +664,7 @@ function finish() {
         ${mode === 'exam' ? `<section class="exam-solutions"><h2>${t`Worked solutions`}</h2>
             ${results.map(({ question, correct, skipped }) => `<details>
                 <summary>${correct ? '✓' : skipped ? t('Skipped') : '↻'} · ${question.prompt}</summary>
-                ${question.type === 'fbd' ? beamFigure(question.b || center, question.answer) : figureFor(question)}
+                ${practiceDrawingPanel(question, true)}
                 <p>${question.explain}</p>${question.type === 'graph' ? graphSolution(question) : ''}
                 ${methodPanel(methods[questionMethods.get(question.key)])}
                 </details>`).join('')}</section>` : ''}
@@ -754,3 +759,9 @@ if (linkedWorkshop && workshops[Number(linkedWorkshop[1])]) {
     try { sessionStorage.removeItem(languageResumeKey); } catch { /* Storage may be unavailable. */ }
     openWorkshop(Number(linkedWorkshop[1]));
 } else if (!resumeLanguageRoute()) home();
+
+window.addEventListener('hashchange', () => {
+    const match = /^#workshop-(\d+)$/.exec(location.hash);
+    if (match && workshops[Number(match[1])]) openWorkshop(Number(match[1]));
+    else if (activeWorkshop !== null) home();
+});
