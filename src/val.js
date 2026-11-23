@@ -5,10 +5,16 @@ function valPortrait(pose, label = '') {
     </span>`;
 }
 
+function starCount(count) {
+    return `<span aria-hidden="true">★</span> ${count === 1 ? t('1 star') : t`${count} stars`}`;
+}
+
 function heroVal() {
+    const stars = totalStars();
     return `<div class="hero-val val-entrance">
         <canvas class="val-model" aria-hidden="true"></canvas>
         ${valPortrait('hello', t('Val, a little glass tower with wide eyes'))}
+        ${stars ? `<span class="hero-star-count earned-stars">${starCount(stars)}</span>` : ''}
     </div>`;
 }
 
@@ -18,9 +24,11 @@ function updateValGold() {
     workshops.forEach((workshop, index) => {
         total += workshop.turns.length;
         const records = workshopProgress.runs[index]?.records;
-        if (Array.isArray(records)) done += records.slice(0, workshop.turns.length).filter(record => record?.status).length;
+        if (workshopStars(index)) done += workshop.turns.length;
+        else if (Array.isArray(records)) done += records.slice(0, workshop.turns.length).filter(record => record?.status).length;
     });
     document.documentElement.style.setProperty('--val-gold', done / total);
+    document.documentElement.style.setProperty('--val-blue-rows', `${100 * (1 - Math.floor(done / total * 21) / 21)}%`);
 }
 
 let valModelScripts;
@@ -41,7 +49,7 @@ async function showValModel() {
     const canvas = document.querySelector('.val-model');
     if (!canvas || !globalThis.WebGL2RenderingContext) return;
     try {
-        valModelScripts ||= loadValScript('src/vendor/three-r181.min.js').then(() => loadValScript('src/val-3d.js?v=10'));
+        valModelScripts ||= loadValScript('src/vendor/three-r181.min.js').then(() => loadValScript('src/val-3d.js?v=14'));
         await valModelScripts;
     } catch {
         valModelScripts = undefined;
@@ -50,7 +58,7 @@ async function showValModel() {
     if (!canvas.isConnected) return;
     const gold = Number(document.documentElement.style.getPropertyValue('--val-gold'));
     try {
-        globalThis.mountValModel(canvas, gold);
+        globalThis.mountValModel(canvas, gold, totalStars());
     } catch {
         // The complete rendered portrait stays visible if WebGL is unavailable.
     }

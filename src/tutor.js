@@ -4,16 +4,17 @@ function readWorkshops() {
     try {
         const saved = JSON.parse(localStorage.getItem(workshopStorageKey));
         if (saved?.runs && typeof saved.runs === 'object' && !Array.isArray(saved.runs)) {
-            return { runs: saved.runs, recent: saved.recent, signals: saved.signals || {} };
+            return { runs: saved.runs, archives: saved.archives || {}, recent: saved.recent, signals: saved.signals || {} };
         }
     } catch {
         // A workshop can still run when browser storage is unavailable.
     }
-    return { runs: {}, recent: null, signals: {} };
+    return { runs: {}, archives: {}, recent: null, signals: {} };
 }
 
 const workshopProgress = readWorkshops();
 let activeWorkshop = null;
+let archiveAttempt = null;
 
 function saveWorkshops() {
     updateValGold();
@@ -27,24 +28,36 @@ function saveWorkshops() {
 function workshopRun(i) {
     const saved = workshopProgress.runs[i];
     if (saved && Array.isArray(saved.records) && Number.isInteger(saved.cursor) &&
-        saved.cursor >= 0 && saved.cursor <= workshops[i].turns.length) return saved;
+        saved.cursor >= 0 && saved.cursor <= workshopVersion(i, attemptNumber(saved)).turns.length) return saved;
     return workshopProgress.runs[i] = { cursor: 0, records: [] };
 }
 
+const attemptNumber = run => run?.attempt || 1;
+const archivedRuns = i => Array.isArray(workshopProgress.archives[i]) ? workshopProgress.archives[i] : [];
+
 function workshopFinished(i) {
     const run = workshopProgress.runs[i];
-    return Boolean(run?.finished && run.records?.[workshops[i].turns.length - 1]?.status);
+    return Boolean(run?.finished && run.records?.[workshopVersion(i, attemptNumber(run)).turns.length - 1]?.status);
+}
+
+function workshopStars(i) {
+    return archivedRuns(i).length + Number(workshopFinished(i));
+}
+
+function totalStars() {
+    return workshops.reduce((sum, _, i) => sum + workshopStars(i), 0);
 }
 
 function workshopXp() {
-    return Object.values(workshopProgress.runs).reduce((sum, run) => sum +
+    const runs = workshops.flatMap((_, i) => [...archivedRuns(i), workshopProgress.runs[i]]);
+    return runs.reduce((sum, run) => sum +
         (Array.isArray(run?.records) ? run.records.filter(record => record?.status === 'correct').length * 10 : 0), 0);
 }
 
 function nextWorkshop() {
     const recent = workshopProgress.recent;
     if (Number.isInteger(recent) && workshops[recent] && !workshopFinished(recent)) return recent;
-    return unitOrder.find(i => !workshopFinished(i)) ?? unitOrder[0];
+    return unitOrder.find(i => !workshopStars(i)) ?? unitOrder[0];
 }
 
 const escapeTutor = value => String(value ?? '').replace(/[&<>"']/g, character =>
@@ -181,7 +194,9 @@ function tutorDrawing(workshop, run, i, interactive, current) {
     const picked = record?.status && turn.hot?.includes(choice) ? drawing.points[choice] : null;
     const marker = picked ? `<span class="lesson-point-mark" style="--point-x:${picked[0]}%;--point-y:${picked[1]}%" aria-hidden="true">✓</span>` : '';
     let pastSketch = null;
-    if (current && workshop === workshops[4]) {
+    if (current && workshop.repeat && turn.type === 'sketch' && turn.kind === 'M') {
+        pastSketch = workshop.turns.slice(0, i).findLast((previous, j) => previous.type === 'sketch' && previous.kind === 'V' && run.records[j]?.status);
+    } else if (current && workshop === workshops[4]) {
         const from = i > 9 ? 10 : 3;
         pastSketch = workshop.turns.slice(from, i).findLast((previous, j) => previous.type === 'sketch' && run.records[from + j]?.status);
     }
@@ -251,13 +266,15 @@ function tutorTurn(workshop, run, isRefresher) {
             <div class="tutor-active">
                 <p class="tutor-step">${t`Step ${run.cursor + 1} of ${workshop.turns.length}`}</p>
                 ${valNote(`<p>${turn.intro}</p>`)}
-                <h2 class="tutor-prompt" tabindex="-1">${turn.prompt}</h2>
-                ${turn.units ? `<p class="tutor-units"><b>${t`Follow the units`}</b> ${turn.units}</p>` : ''}
-                ${algebraWalkthrough(turn, record, Boolean(record.status))}
-                ${!record.status ? tutorFeedback(turn, record) : ''}
-                ${tutorInputs(workshop, run.cursor, record, isRefresher)}
-                ${record.status ? tutorFeedback(turn, record) : ''}
-                ${record.status ? recordedCalculation(turn, record) : ''}
+                <section class="tutor-problem" aria-labelledby="${isRefresher ? 'refresher-question' : 'workshop-question'}">
+                    <p class="tutor-question-label">${t('Your question')}</p>
+                    <h2 id="${isRefresher ? 'refresher-question' : 'workshop-question'}" class="tutor-prompt" tabindex="-1">${turn.prompt}</h2>
+                    ${turn.units ? `<p class="tutor-units"><b>${t`Follow the units`}</b> ${turn.units}</p>` : ''}
+                    ${algebraWalkthrough(turn, record, Boolean(record.status))}
+                    ${tutorInputs(workshop, run.cursor, record, isRefresher)}
+                    ${tutorFeedback(turn, record)}
+                    ${record.status ? recordedCalculation(turn, record) : ''}
+                </section>
                 <div class="tutor-controls">
                     ${run.cursor > 0 ? `<button type="button" data-tutor="back">${t("‹ Previous step")}</button>` : ''}
                     ${record.status ? `<button type="button" class="primary" data-tutor="next">${run.cursor + 1 === workshop.turns.length ? t('Finish') : t('Continue')} →</button>` :
@@ -271,8 +288,12 @@ function tutorTurn(workshop, run, isRefresher) {
 }
 
 function renderTutor(index, focus = 'title') {
-    const workshop = workshops[index];
-    const run = workshopRun(index);
+    const current = workshopRun(index);
+    const previous = archivedRuns(index);
+    const reviewing = archiveAttempt !== null;
+    const run = reviewing ? previous.find(attempt => attemptNumber(attempt) === archiveAttempt) : current;
+    const attempt = attemptNumber(run);
+    const workshop = workshopVersion(index, attempt);
     const complete = run.cursor === workshop.turns.length;
     const title = units[index].title;
     const following = unitOrder[unitOrder.indexOf(index) + 1];
@@ -280,13 +301,26 @@ function renderTutor(index, focus = 'title') {
         <div class="tutor-session-heading">
             <div>${button(t('‹ Learning path'), 'home')}<p class="eyebrow">ARCH 600 · ${title}</p>
                 <h1 tabindex="-1">${workshop.title}</h1></div>
+            ${workshopStars(index) ? `<div class="tutor-attempts">
+                <span class="earned-stars">${starCount(workshopStars(index))}</span>
+                <p>${t`Attempt ${attempt}`}</p>
+                ${reviewing ? button(t('Current attempt'), 'unit', index) : complete ? button(t('Redo with new problems'), 'redo-workshop', index, 'primary') : ''}
+                ${previous.length ? `<details class="tutor-attempt-list"><summary>${t('Past attempts')}</summary>
+                    ${previous.slice().reverse().map(saved => {
+                        const number = attemptNumber(saved);
+                        return number === attempt && reviewing ? `<strong>${t`Attempt ${number}`}</strong>` :
+                            button(t`Review attempt ${number}`, 'review-workshop', `${index}/${number}`);
+                    }).join('')}</details>` : ''}
+            </div>` : ''}
             <progress value="${run.cursor}" max="${workshop.turns.length}" aria-label="${t`Workshop steps complete`}"></progress>
         </div>
         ${tutorHistory(workshop, run)}
         ${complete ? `<article class="tutor-finish" tabindex="-1"><div class="tutor-celebrate val-pop">${valPortrait('cheer')}</div>
-            <h2>${t`Workshop complete`}</h2><p>${workshop.outcome}</p>
+            <h2>${reviewing ? t`Reviewing attempt ${attempt}` : t('Workshop complete')}</h2>
+            ${reviewing ? '' : `<p class="attempt-reward"><span aria-hidden="true">★</span> ${t('You earned a star for Val!')}</p>`}<p>${workshop.outcome}</p>
             <div class="toolbar"><button data-tutor="review" type="button">${t`Review our conversation`}</button>
                 <button data-tutor="print-workshop" type="button">${t('Print lesson')}</button>
+                ${reviewing ? button(t('Current attempt'), 'unit', index) : button(t('Redo with new problems'), 'redo-workshop', index, 'primary')}
                 ${button(t('Try practice questions'), 'practice', index)}
                 ${following === undefined ? button(t('Practice exams'), 'final', '', 'primary') :
                     button(t('Next topic →'), 'unit', following, 'primary')}</div>
@@ -294,7 +328,7 @@ function renderTutor(index, focus = 'title') {
     </section>`;
     const root = app.querySelector('.tutor-session');
     bindTutor(root, workshop, run, target => renderTutor(index, target), index);
-    if (focus === 'title' && run.cursor === 0) focusPage();
+    if (focus === 'title') focusPage();
     else if (focus === 'feedback') {
         const target = root.querySelector('.tutor-feedback');
         target?.focus({ preventScroll: true });
@@ -303,23 +337,39 @@ function renderTutor(index, focus = 'title') {
         const prompt = root.querySelector('.tutor-prompt, .tutor-finish') || root.querySelector('h1');
         prompt?.focus({ preventScroll: true });
         root.querySelector('.tutor-board, .tutor-finish')?.scrollIntoView({ block: 'start' });
+        prompt?.scrollIntoView({ block: 'nearest' });
     }
 }
 
-function openWorkshop(index) {
+function openWorkshop(index, review = null) {
     if (!workshops[index]) return;
     session = undefined;
     activeWorkshop = index;
-    workshopProgress.recent = index;
+    archiveAttempt = archivedRuns(index).some(run => attemptNumber(run) === review) ? review : null;
+    if (archiveAttempt === null) workshopProgress.recent = index;
     workshopRun(index);
     saveWorkshops();
-    history.replaceState(null, '', `#workshop-${index}`);
+    history.replaceState(null, '', `#workshop-${index}${archiveAttempt === null ? '' : `/attempt-${archiveAttempt}`}`);
     renderTutor(index);
+}
+
+function redoWorkshop(index) {
+    if (!workshops[index] || !workshopFinished(index)) return;
+    const completed = workshopRun(index);
+    workshopProgress.archives[index] = [...archivedRuns(index), completed];
+    workshopProgress.runs[index] = { cursor: 0, records: [], attempt: attemptNumber(completed) + 1 };
+    openWorkshop(index);
+}
+
+function workshopLink() {
+    const match = /^#workshop-(\d+)(?:\/attempt-(\d+))?$/.exec(location.hash);
+    return match && workshops[Number(match[1])] ? [Number(match[1]), match[2] ? Number(match[2]) : null] : null;
 }
 
 function closeWorkshopRoute() {
     if (activeWorkshop === null) return;
     activeWorkshop = null;
+    archiveAttempt = null;
     history.replaceState(null, '', location.pathname + location.search);
 }
 
@@ -506,7 +556,7 @@ function scrollLessonStep(root, index) {
 function printWorkshop(workshop, run) {
     const print = document.createElement('article');
     print.className = 'lesson-print';
-    print.innerHTML = `<h1>${workshop.title}</h1><p>${workshop.outcome}</p>
+    print.innerHTML = `<h1>${workshop.title}</h1><p>${t`Attempt ${attemptNumber(run)}`}</p><p>${workshop.outcome}</p>
         ${workshop.turns.map((_, i) => lessonStepRecord(workshop, run, i)).join('')}`;
     document.body.append(print);
     document.body.classList.add('printing-lesson');

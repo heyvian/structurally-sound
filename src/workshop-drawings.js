@@ -40,23 +40,24 @@ function roofPlan({ edge = false, floor = false, bay, length, width, oneMetre = 
         t('The thick lines are beams under the roof. The shaded strip is the roof area carried by the highlighted beam. The dashed lines mark where that area ends between beams.'));
 }
 
-function momentArm(aboutA) {
+function momentArm(aboutA, load = 24, position = 2, span = 8) {
     const pivot = aboutA ? 68 : 388;
-    const arm = aboutA ? 2 : 6;
-    return workshopFigure(plate(t`A 24 kN downward force and a ${arm} m perpendicular arm measured from ${aboutA ? 'A' : 'B'}.`, `
+    const x = 68 + 320 * position / span;
+    const arm = aboutA ? position : span - position;
+    return workshopFigure(plate(t`A ${load} kN downward force and a ${arm} m perpendicular arm measured from ${aboutA ? 'A' : 'B'}.`, `
         <path class="diagram-line" d="M68 89H388M68 89l-11 14h22zM388 89l-11 14h22z"/>
-        <path class="diagram-arrow" d="M148 29V84"/><text x="158" y="36">24 kN</text>
+        <path class="diagram-arrow" d="M${x} 29V84"/><text x="${x + 10}" y="36">${load} kN</text>
         <text x="66" y="118" text-anchor="middle">A</text><text x="390" y="118" text-anchor="middle">B</text>
         <circle cx="${pivot}" cy="89" r="6" fill="#d6f447" stroke="#2945a7" stroke-width="2"/>
-        <path class="diagram-dash" d="M${pivot} 109V145M148 89V145M${pivot} 138H148"/>
-        <text x="${(pivot + 148) / 2}" y="158" text-anchor="middle">${arm} m</text>`), {},
+        <path class="diagram-dash" d="M${pivot} 109V145M${x} 89V145M${pivot} 138H${x}"/>
+        <text x="${(pivot + x) / 2}" y="158" text-anchor="middle">${arm} m</text>`), {},
     t`The highlighted support ${aboutA ? 'A' : 'B'} is the point we are measuring about.`);
 }
 
 let workshopTrussNumber = 0;
-function workshopTrussFigure(variant, values = {}, focus) {
+function workshopTrussFigure(variant, values = {}, focus, load = workshopTruss.load) {
     const id = `workshop-truss-${workshopTrussNumber++}`;
-    const { nodes, members, load } = workshopTruss;
+    const { nodes, members } = workshopTruss;
     const px = x => 104 + x * 26;
     const py = y => 307 - y * 26;
     const reactions = variant === 'truss-reactions';
@@ -81,7 +82,7 @@ function workshopTrussFigure(variant, values = {}, focus) {
             ${Number.isFinite(value) ? `<text class="truss-member-value" x="${labelX}" y="${labelY}">${numberText(value)}</text>` : ''}`;
     }).join('');
     return workshopFigure(`<svg class="diagram truss-workshop" viewBox="0 0 340 355" role="img"
-        aria-label="${t`Five-joint truss with A pinned, B on a roller, and a 90 kN rightward force at E. Supports are 5 m apart and E is 10 m above A.`}">
+        aria-label="${t`Five-joint truss with A pinned, B on a roller, and a ${load} kN rightward force at E. Supports are 5 m apart and E is 10 m above A.`}">
         <defs>
             <marker id="${id}-load" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#b53726"/></marker>
             <marker id="${id}-reaction" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#2945a7"/></marker>
@@ -123,18 +124,18 @@ function workshopPlot(kind, highlightPositive = false) {
 const workshopDrawings = {
     triangle: () => workshopFigure(plates.triangle(), { run: [48,81], rise: [70,48], brace: [49,44] }),
     'load-path': () => workshopFigure(plates.load(), { deck: [44,32], soil: [46,83] }),
-    vector: () => workshopFigure(plate(t('A 10 kN force at 30 degrees above positive x, with horizontal and vertical projections.'), `
+    vector: (force = 10) => workshopFigure(plate(t`A ${force} kN force at 30 degrees above positive x, with horizontal and vertical projections.`, `
         <path class="diagram-line" d="M78 148V35M78 148H329M112 148A34 34 0 0 0 107.4 131"/>
         <path class="diagram-dash" d="M290 26V148M290 26H78"/>
         <path class="diagram-arrow" d="M78 148L290 26"/>
-        <text x="300" y="29">10 kN</text><text x="118" y="139">30°</text>
+        <text x="300" y="29">${force} kN</text><text x="118" y="139">30°</text>
         <text x="173" y="168">Fₓ</text><text x="307" y="88">Fᵧ</text>`),
         { x: [40,82], y: [63,47], f: [41,46] }),
-    'vector-sum': () => workshopFigure(plate(t('Horizontal pull from each cable. The first cable pulls right with 8.66 kN. The second cable pulls left with 3 kN.'), `
+    'vector-sum': (right = 8.66, left = 3) => workshopFigure(plate(t`Horizontal pull from each cable. The first cable pulls right with ${numberText(right)} kN. The second cable pulls left with ${numberText(left)} kN.`, `
         <path class="diagram-dash" d="M175 22V156"/>
         <path class="diagram-arrow" d="M175 45H365M175 94H109"/>
-        <text x="195" y="32">${t('First cable')} · +${numberText(8.66)} kN</text>
-        <text x="112" y="82">${t('Second cable')} · −3 kN</text>`)),
+        <text x="195" y="32">${t('First cable')} · +${numberText(right)} kN</text>
+        <text x="112" y="82">${t('Second cable')} · −${numberText(left)} kN</text>`)),
     'vector-resultant': () => workshopFigure(componentVectorPlate(5.66, 5, null, 'angle')),
     'oblique-vector': () => workshopFigure(conceptPlate('cosine-triangle')),
     vibration: () => workshopFigure(conceptPlate('vibration')),

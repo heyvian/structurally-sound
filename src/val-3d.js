@@ -40,7 +40,7 @@
         const group = new Group();
         const walls = [];
         footprint.forEach((start, i) => quad(walls, start, footprint[(i + 1) % footprint.length], 0, height));
-        group.add(new Mesh(meshGeometry(walls), paint(new Color('#355366').lerp(new Color('#8e672e'), progress), .48, .25)));
+        group.add(new Mesh(meshGeometry(walls), paint('#355366', .48, .25)));
 
         const cap = [];
         const contour = footprint.map(([x, z]) => new Vector2(x, z));
@@ -51,11 +51,12 @@
             cap.push(...top.flatMap(({ x, y }) => [x, height, y]));
             cap.push(...top.slice().reverse().flatMap(({ x, y }) => [x, 0, y]));
         }
-        group.add(new Mesh(meshGeometry(cap), paint(new Color('#c4dcd8').lerp(new Color('#e8c77d'), progress), .32, .27)));
+        group.add(new Mesh(meshGeometry(cap), paint('#c4dcd8', .32, .27)));
 
-        const palette = glassBlue.map((blue, i) => new Color(blue).lerp(new Color(glassGold[i]), progress));
+        const blue = glassBlue.map(color => new Color(color));
+        const gold = glassGold.map(color => new Color(color));
         const panes = [];
-        const colors = [];
+        const panels = [];
         const stories = 21;
         footprint.forEach(([x, z], i) => {
             const [endX, endZ] = footprint[(i + 1) % footprint.length];
@@ -69,13 +70,20 @@
                 const b = edge((column + .963) / columns);
                 for (let story = 0; story < stories; story++) {
                     quad(panes, a, b, height * (story + .034) / stories, height * (story + .937) / stories);
-                    const color = palette[(story * 17 + column * 31 + i * 7 + Math.floor(story / 5)) % palette.length];
-                    for (let vertex = 0; vertex < 6; vertex++) colors.push(color.r, color.g, color.b);
+                    panels.push({ index: panels.length, order: story * 257 + ((i * 47 + column * 113) % 257),
+                        shade: (story * 17 + column * 31 + i * 7 + Math.floor(story / 5)) % blue.length });
                 }
             }
         });
+        const goldCount = Math.round(panels.length * clamp(progress, 0, 1));
+        const goldPanels = new Set(panels.slice().sort((a, b) => a.order - b.order).slice(0, goldCount).map(panel => panel.index));
+        const colors = new Float32Array(panes.length);
+        for (const { index, shade } of panels) {
+            const { r, g, b } = (goldPanels.has(index) ? gold : blue)[shade];
+            for (let vertex = 0; vertex < 6; vertex++) colors.set([r, g, b], index * 18 + vertex * 3);
+        }
         const glazing = meshGeometry(panes);
-        glazing.setAttribute('color', new BufferAttribute(new Float32Array(colors), 3));
+        glazing.setAttribute('color', new BufferAttribute(colors, 3));
         group.add(new Mesh(glazing, new MeshPhysicalMaterial({ vertexColors: true, roughness: .38, metalness: .14, clearcoat: .28 })));
         return group;
     }
@@ -129,6 +137,33 @@
         return eyes;
     }
 
+    function facadeStars(root, count) {
+        if (!count) return;
+        const columns = Math.max(3, Math.ceil(Math.sqrt(count * .75)));
+        const rows = Math.ceil(count / columns);
+        const radius = Math.min(.097, .35 / columns, .45 / rows);
+        const face = [], rim = [];
+        for (let i = 0; i < count; i++) {
+            const row = Math.floor(i / columns);
+            const inRow = Math.min(columns, count - row * columns);
+            const x = -.225 + (i % columns - (inRow - 1) / 2) * radius * 2.3;
+            const y = 1.035 - row * radius * 2.15;
+            const point = (n, scale, z) => {
+                const angle = Math.PI / 2 + n * Math.PI / 5;
+                const length = radius * scale * (n % 2 ? .46 : 1);
+                return [x + Math.cos(angle) * length, y + Math.sin(angle) * length, z];
+            };
+            for (let side = 0; side < 10; side++) {
+                rim.push(x, y, .343, ...point(side, 1, .343), ...point(side + 1, 1, .343));
+                face.push(x, y, .365, ...point(side, .86, .348), ...point(side + 1, .86, .348));
+            }
+        }
+        const inlay = new Mesh(meshGeometry(rim), paint('#684219', .42, .38));
+        const gold = new Mesh(meshGeometry(face), new MeshStandardMaterial({ color: '#ffcf52', emissive: '#bf7300', emissiveIntensity: .26, roughness: .34, metalness: .42 }));
+        gold.name = 'facade-stars';
+        root.add(inlay, gold);
+    }
+
     function spotlight(scene, color, strength, x, y, z) {
         const light = new DirectionalLight(color, strength);
         light.position.set(x, y, z);
@@ -146,7 +181,7 @@
         materials.forEach(material => material.dispose());
     }
 
-    function mount(canvas, progress) {
+    function mount(canvas, progress, stars = 0) {
         const context = canvas.getContext('webgl2', { alpha: true, antialias: true });
         if (!context) return;
         const renderer = new WebGLRenderer({ canvas, context, alpha: true, antialias: true });
@@ -165,6 +200,7 @@
         const root = new Group();
         const body = tower(progress);
         const eyes = face(body);
+        facadeStars(body, stars);
         body.position.y = -height / 2;
         root.position.y = height / 2;
         root.add(body);

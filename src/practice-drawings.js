@@ -18,7 +18,7 @@ const practiceReactionIndex = {
     'guided-3-1': 2, 'workshop-3': 2, 'workshop-4': 1, 'beam-exam-3': 2, 'beam-exam-4': 1,
 };
 const practiceVectors = {
-    '1-1': [10, 30, 'y'], '1-5': [20, 60, 'x'], '1-7': [125, 30, 'x'], '1-8': [125, 30, 'y'],
+    '1-1': [14, 30, 'y'], '1-5': [20, 60, 'x'], '1-7': [125, 30, 'x'], '1-8': [125, 30, 'y'],
     '1-9': [40, 150, 'x', '−x'], 'guided-1-0': [20, 150, 'x', '−x'], 'formula-1': [18, 120, 'x'],
 };
 const practiceComponentVectors = {
@@ -261,7 +261,7 @@ function practiceDrawing(question, solved = false) {
         const restraint = bucklingCases['fixed-free'];
         return `<div class="restraint-pair"><figure>${restraintDiagram(restraint)}<figcaption>${restraint.title}${solved ? ' · K = 2' : ''}</figcaption></figure></div>`;
     }
-    if (key === '0-7' || key === 'formula-0') return roofPlan({ width: key === '0-7' ? 4 : 3, floor: key === 'formula-0' }).markup;
+    if (key === '0-7' || key === 'formula-0') return roofPlan({ width: key === '0-7' ? 5 : 3, floor: key === 'formula-0' }).markup;
     if (key === 'guided-0-0') return roofPlan({ edge: true, bay: 3, floor: true }).markup;
     if (key === 'guided-2-1') return workshopDrawings['two-rollers']().markup;
     if (key === '8-10' || key === '8-11') return lateralReactionPlate(key === '8-11', solved);
@@ -297,8 +297,9 @@ function practiceDrawing(question, solved = false) {
     if (question.fig === 'truss') return triangularFbd(40, solved);
     if (question.fig === 'lateral') {
         const focus = practiceTrussJoints[key];
-        const values = solved ? { Aₓ: -90, Aᵧ: -180, Bᵧ: 180 } : {};
-        return workshopTrussFigure(focus || solved ? 'truss' : 'truss-reactions', values, focus).markup;
+        const load = practiceTrussLoad;
+        const values = solved ? { Aₓ: -load, Aᵧ: -2 * load, Bᵧ: 2 * load } : {};
+        return workshopTrussFigure(focus || solved ? 'truss' : 'truss-reactions', values, focus, load).markup;
     }
     if (question.type === 'stress') return solved ? stressFigure() : '';
     return question.fig || question.restraints ? figureFor(question) : '';

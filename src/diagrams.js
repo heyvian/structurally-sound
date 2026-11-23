@@ -17,6 +17,23 @@ function graphScale(question, values) {
         ...values.filter(Number.isFinite).map(Math.abs)) / 5) * 5);
 }
 
+function graphIncrement(scale) {
+    if (scale <= 10) return .25;
+    if (scale <= 25) return .5;
+    if (scale <= 60) return 1;
+    return Math.ceil(scale / 50);
+}
+
+function snapOrdinate(value, scale, ordinates, target, unitsPerPixel) {
+    const step = graphIncrement(scale);
+    const reach = Math.max(step / 3, 3.5 * unitsPerPixel);
+    // Two valid heights can share the same screen pixel. Give the active station priority there.
+    if (Math.abs(target - value) <= reach) return target;
+    const nearest = ordinates.reduce((best, ordinate) => Math.abs(ordinate - value) < Math.abs(best - value) ? ordinate : best, Infinity);
+    if (Math.abs(nearest - value) <= reach) return nearest;
+    return Number(fmt(Math.max(-scale, Math.min(scale, Math.round(value / step) * step))));
+}
+
 function graphX(question, position) { return 55 + 430 * position / question.b.L; }
 function graphY(question, scale, value) { return 133 + (question.kind === 'M' ? 1 : -1) * value / scale * 94; }
 
@@ -85,15 +102,31 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
 }
 
 function graphMarkup(question) {
+    const sign = question.kind === 'M' ? t('Positive sagging goes below the baseline.') : t('Positive shear goes above the baseline.');
+    const scale = graphScale(question, []);
+    const suggested = [...new Set([...question.answer, ...Array.from({ length: 9 }, (_, i) => scale * (i - 4) / 4)]
+        .map(value => Number(fmt(value))))].sort((a, b) => a - b);
     return `
-        <p id="graph-instructions">${t`${question.kind === 'M' ?
-            t('Positive sagging goes below the baseline.') : t('Positive shear goes above the baseline.')}
-            Choose a station, then tap the grid at its height. A mouse previews the snapped point. You can also type exact values below.`}</p>
+        <p id="graph-instructions">${sign} ${t('Choose a station, then tap its height on the graph, pick it from the list, or enter it exactly.')}</p>
         <div class="graph-station-buttons" role="group" aria-label="${t`Stations to plot`}">${question.stations.map((_, i) =>
             `<button type="button" data-plot-station="${i}" aria-pressed="false">${stationLabel(question.stations, i)}</button>`).join('')}</div>
         <svg id="graph-plot" class="diagram graph" viewBox="0 0 520 263" role="img"
             aria-label="${t`Your diagram sketch`}" aria-describedby="graph-instructions"></svg>
         <p class="graph-placement" data-graph-placement></p>
+        <div class="graph-height-controls">
+            <label>${t('Height options')}
+                <select data-graph-heights>
+                    <option value="">${t('Choose a height')}</option>
+                    ${suggested.map(value => `<option value="${studyInputText(value)}">${numberText(value)}</option>`).join('')}
+                </select>
+            </label>
+            <label>${t('Selected height')} (${question.kind === 'M' ? 'kN·m' : 'kN'})
+                <input type="text" class="study-number" inputmode="decimal" data-graph-height>
+            </label>
+            <button type="button" data-graph-adjust="-1" aria-label="${t('Decrease height by 0.1')}">−</button>
+            <button type="button" data-graph-adjust="1" aria-label="${t('Increase height by 0.1')}">+</button>
+            <button type="button" data-graph-place>${t('Place point')}</button>
+        </div>
         <button class="graph-clear" type="button" data-graph-clear>${t('Clear values')}</button>
         <p class="graph-announcement" role="status" data-graph-announcement></p>
         <fieldset class="diagram-fields"><legend>${question.kind === 'M' ? t('Moment ordinates · kN·m') : t('Shear ordinates · kN')}</legend>
@@ -119,6 +152,10 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
     const cycles = [...root.querySelectorAll('[data-shape-cycle]')];
     const clear = root.querySelector('[data-graph-clear]');
     const placement = root.querySelector('[data-graph-placement]');
+    const height = root.querySelector('[data-graph-height]');
+    const heights = root.querySelector('[data-graph-heights]');
+    const place = root.querySelector('[data-graph-place]');
+    const adjustments = [...root.querySelectorAll('[data-graph-adjust]')];
     const announcement = root.querySelector('[data-graph-announcement]');
     const units = question.kind === 'M' ? 'kN·m' : 'kN';
     const answer = {
@@ -128,9 +165,15 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
     };
     const firstEmpty = () => answer.values.findIndex(value => value === null);
     let selected = firstEmpty();
+    const ordinates = [...new Set(question.answer.map(value => Number(fmt(value))))];
+    const availableHeights = new Set(Array.from(heights.options, option => option.value));
     const stationStatus = () => {
         placement.textContent = selected < 0 ? t('All stations placed. Select any station to move its point.') :
-            t`Placing ${stationLabel(question.stations, selected)}. Height snaps to ${numberText(graphScale(question, answer.values) / 25)} ${units}.`;
+            t`Placing ${stationLabel(question.stations, selected)}.`;
+    };
+    const updateHeightChoice = value => {
+        const option = studyInputText(value);
+        heights.value = availableHeights.has(option) ? option : '';
     };
     const paint = (showAnswer = false) => {
         plot.classList.toggle('placing-station', !showAnswer && selected >= 0);
@@ -145,6 +188,13 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
             button.textContent = `${range} · ${shapeLabels[answer.shapes[i]] ?? t('Choose shape')}`;
         });
         clear.disabled = answer.values.every(value => value === null) && answer.shapes.every(shape => shape === null);
+        height.disabled = showAnswer || selected < 0;
+        heights.disabled = height.disabled;
+        adjustments.forEach(button => { button.disabled = height.disabled; });
+        const currentHeight = answer.values[selected];
+        height.value = height.disabled || currentHeight == null ? '' : studyInputText(currentHeight);
+        updateHeightChoice(currentHeight);
+        place.disabled = height.disabled || currentHeight == null;
         stationStatus();
     };
     const update = () => {
@@ -203,19 +253,19 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         if (point.x < 44 || point.x > 495 || point.y < 32 || point.y > 234) return null;
         const scale = graphScale(question, answer.values);
         const value = (point.y - 133) * scale / ((question.kind === 'M' ? 1 : -1) * 94);
-        const step = scale / 25;
-        return { point, scale, value: Math.max(-scale, Math.min(scale, Number(fmt(Math.round(value / step) * step)))) };
+        const unitsPerPixel = scale / (94 * Math.hypot(matrix.c, matrix.d));
+        const target = Number(fmt(question.answer[selected]));
+        return { point, scale, value: snapOrdinate(value, scale, ordinates, target, unitsPerPixel) };
     };
     const clearPreview = () => {
         plot.querySelector('.plot-preview')?.setAttribute('visibility', 'hidden');
         stationStatus();
     };
-    const previewAt = event => {
-        const snap = snappedHeight(event);
-        if (!snap) { clearPreview(); return; }
-        const { point, scale, value } = snap;
+    const drawPreview = (value, scale, point) => {
+        if (selected < 0 || !Number.isFinite(value) || Math.abs(value) > scale) { clearPreview(); return; }
         const x = graphX(question, question.stations[selected].x);
         const y = graphY(question, scale, value);
+        const cursor = point || { x, y };
         const preview = plot.querySelector('.plot-preview');
         preview.setAttribute('visibility', 'visible');
         preview.querySelector('.preview-height').setAttribute('d', `M55 ${y}H485`);
@@ -230,22 +280,56 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         caption.textContent = `${numberText(value)} ${units}`;
         const width = caption.getComputedTextLength() + 18;
         tooltip.querySelector('rect').setAttribute('width', width);
-        tooltip.setAttribute('transform', `translate(${point.x + width + 14 < 520 ? point.x + 14 : point.x - width - 13} ${point.y - 31})`);
+        tooltip.setAttribute('transform', `translate(${cursor.x + width + 14 < 520 ? cursor.x + 14 : cursor.x - width - 13} ${Math.max(2, cursor.y - 31)})`);
         placement.textContent = t`${stationLabel(question.stations, selected)} · ${numberText(value)} ${units}. Click to place.`;
+    };
+    const previewAt = event => {
+        const snap = snappedHeight(event);
+        if (!snap) { clearPreview(); return; }
+        height.value = studyInputText(snap.value);
+        updateHeightChoice(snap.value);
+        place.disabled = false;
+        drawPreview(snap.value, snap.scale, snap.point);
+    };
+    const placeHeight = (value, sketched) => {
+        if (selected < 0 || !Number.isFinite(value)) return;
+        announcement.textContent = t`${stationLabel(question.stations, selected)} placed at ${numberText(value)} ${units}.`;
+        answer.values[selected] = value;
+        inputs[selected].value = studyInputText(value);
+        answer.sketched[selected] = sketched;
+        selected = firstEmpty();
+        update();
     };
     const sketchAt = event => {
         const hit = event.target.closest('[data-shape-hit]');
         if (hit) { cycleShape(Number(hit.dataset.shapeHit)); return; }
         const snap = snappedHeight(event);
-        if (!snap) return;
-        const { value } = snap;
-        announcement.textContent = t`${stationLabel(question.stations, selected)} placed at ${numberText(value)} ${units}.`;
-        answer.values[selected] = value;
-        inputs[selected].value = studyInputText(value);
-        answer.sketched[selected] = true;
-        selected = firstEmpty();
-        update();
+        if (snap) placeHeight(snap.value, true);
     };
+    const typedHeight = () => parseStudyNumber(height.value);
+    const previewTypedHeight = () => {
+        const value = typedHeight();
+        updateHeightChoice(value);
+        place.disabled = !Number.isFinite(value);
+        drawPreview(value, graphScale(question, answer.values));
+    };
+    const adjustHeight = amount => {
+        const value = typedHeight();
+        height.value = studyInputText(Number(fmt((Number.isFinite(value) ? value : 0) + amount * .1)));
+        previewTypedHeight();
+    };
+    heights.addEventListener('change', () => {
+        height.value = heights.value;
+        previewTypedHeight();
+    });
+    height.addEventListener('input', previewTypedHeight);
+    height.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();
+        if (event.key === 'Enter') placeHeight(typedHeight(), false);
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') adjustHeight(event.key === 'ArrowUp' ? 1 : -1);
+    });
+    place.addEventListener('click', () => placeHeight(typedHeight(), false));
+    adjustments.forEach(button => button.addEventListener('click', () => adjustHeight(Number(button.dataset.graphAdjust))));
     plot.addEventListener('pointermove', previewAt);
     plot.addEventListener('pointerleave', clearPreview);
     plot.addEventListener('click', sketchAt);

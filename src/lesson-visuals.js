@@ -37,6 +37,11 @@ function diagramDraft(raw, language) {
 }
 
 function lessonForce(workshop, index, i, value, negative) {
+    if (workshop.repeat) {
+        const { arrow, unit, momentAt, symbol } = workshop.turns[i];
+        if (momentAt) return momentGlyph(momentAt, 89, symbol, value, negative);
+        return arrow ? forceGlyph({ ...arrow, unit }, value, negative) : '';
+    }
     if (index === 3 && (i === 3 || i === 4)) return momentGlyph(i === 3 ? 68 : 388, 89, lessonSymbols[3][i], value, negative);
     const force = lessonForces[`${index}-${i}`];
     if (!force) return '';
@@ -49,15 +54,15 @@ function lessonForce(workshop, index, i, value, negative) {
 
 function addSvgLayer(markup, layer) { return markup.replace(/<\/svg>\s*$/, `${layer}</svg>`); }
 
-function teeProgress(value) {
-    const axis = Number.isFinite(value) && value >= 0 && value <= 100 ? 148 - 1.2 * value : null;
+function teeProgress(value, scale = 1) {
+    const axis = Number.isFinite(value) && value >= 0 && value <= 100 * scale ? 148 - 1.2 * value / scale : null;
     return plate(t('T section with its flange, web, and centroid'), `
         <path class="diagram-fill" d="M151 28H271V52H223V148H199V52H151Z"/>
         <path class="diagram-dash" d="M151 20H271M281 28V52M292 52V148M151 148H318"/>
-        <text x="210" y="16" text-anchor="middle">100 mm</text><text x="288" y="43">20 mm</text><text x="299" y="104">80 mm</text>
+        <text x="210" y="16" text-anchor="middle">${numberText(100 * scale)} mm</text><text x="288" y="43">${numberText(20 * scale)} mm</text><text x="299" y="104">${numberText(80 * scale)} mm</text>
         <text x="142" y="43" text-anchor="end">${t('Flange')}</text><text x="190" y="112" text-anchor="end">${t('Web')}</text>
         <path class="diagram-line" d="M199 157H223M199 154V160M223 154V160"/>
-        <text x="211" y="174" text-anchor="middle">20 mm</text><text x="324" y="152">y = 0</text>
+        <text x="211" y="174" text-anchor="middle">${numberText(20 * scale)} mm</text><text x="324" y="152">y = 0</text>
         ${axis === null ? '' : `<path class="centroid-line" d="M95 ${axis}H318"/><circle class="moment-pivot" cx="211" cy="${axis}" r="4"/>
             <text x="101" y="${axis - 6}">ȳ = ${numberText(value)} mm</text>`}`);
 }
@@ -90,6 +95,12 @@ function progressiveLessonDrawing(workshop, run, i) {
     const record = run.records[i] || {};
     if (turn.type === 'fbd') {
         return workshopFigure(fbdDrawing(turn, record.status ? turn.answer : record.draft || [], true));
+    }
+    if (workshop.repeat) {
+        const drawing = turn.figure?.(record, run) || workshopDrawings[turn.drawing || workshop.drawing.drawing]();
+        const draft = record.status ? { value: turn.expected } : diagramDraft(typeof record.draft === 'string' ? record.draft : '', record.draftLocale);
+        const glyph = lessonForce(workshop, index, i, draft.value, draft.negative);
+        return glyph ? { ...drawing, markup: addSvgLayer(drawing.markup, `<g data-lesson-force>${glyph}</g>`) } : drawing;
     }
     const name = index === 8 && i === 14 ? 'joint-b' : turn.drawing || workshop.drawing.drawing;
     let drawing = workshopDrawings[name](name.startsWith('joint') ? lessonSymbols[index]?.[i] : undefined);
@@ -147,7 +158,8 @@ function practiceReactionResultant() {
 function lessonValues(workshop, run, i, all) {
     const index = workshops.indexOf(workshop);
     const first = Math.max(0, workshop.turns.findLastIndex((turn, step) => step <= i && turn.newExample));
-    const entries = Object.entries(lessonSymbols[index] || {}).filter(([step]) => Number(step) >= first && Number(step) <= i)
+    const symbols = workshop.repeat ? workshop.turns.map(turn => turn.symbol) : lessonSymbols[index] || {};
+    const entries = Object.entries(symbols).filter(([step, symbol]) => symbol && Number(step) >= first && Number(step) <= i)
         .filter(([step]) => run.records[step]?.status || Number(step) === i);
     const rows = (all ? entries : entries.filter(([step]) => Number(step) === i)).map(([step, name]) => {
         const turn = workshop.turns[step], record = run.records[step] || {};
@@ -177,6 +189,11 @@ function updateLessonDrawing(root, workshop, i, raw) {
 }
 
 function miniForce(workshop, i, { value, negative }) {
+    if (workshop.repeat) {
+        const { arrow, unit, momentAt, symbol } = workshop.turns[i];
+        if (momentAt) return momentGlyph(59, 51, symbol, value, negative);
+        return arrow ? forceGlyph({ ...arrow, x: 62, y: 52, length: 27, unit, labelSide: 'right' }, value, negative) : '';
+    }
     const index = workshops.indexOf(workshop);
     const name = lessonSymbols[index]?.[i];
     if (index === 3 && (i === 3 || i === 4)) return momentGlyph(59, 51, name, value, negative);

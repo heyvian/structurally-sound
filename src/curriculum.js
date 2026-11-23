@@ -21,7 +21,7 @@ const units = [
         intro: t('Forces are vectors. Resolve them into perpendicular components using SOH CAH TOA. If the angle is measured from +x, Fx = F cos θ and Fy = F sin θ.'),
         q: [
             Q(t('Which ratio equals sine?'),[t('Adjacent / hypotenuse'),t('Opposite / hypotenuse'),t('Opposite / adjacent')],1,t('SOH: sine = opposite / hypotenuse.')),
-            N(t('The 10 kN arrow points 30° above the positive horizontal axis (+x). Find its vertical component, Fᵧ.'),5,t('10 sin 30° = 5 kN.'),t('The vertical component is opposite the angle.'),'kN'),
+            N(t('The 14 kN arrow points 30° above the positive horizontal axis (+x). Find its vertical component, Fᵧ.'),7,t('14 sin 30° = 7 kN.'),t('The vertical component is opposite the angle.'),'kN'),
             N(t('Find the magnitude of a resultant with components 3 and 4 kN.'),5,'√(3² + 4²) = 5 kN.',t('Use Pythagoras.'),'kN'),
         ],
     },
@@ -181,7 +181,7 @@ const extra = [
     [
         Q(t('Wind pulling away from cladding is called…'),[t('Pressure'),t('Suction'),t('Dead load')],1,t('Suction acts outward from the surface.')),
         Q(t('Which is a line load?'),[t('A wall bearing continuously on a beam'),t('A column bearing at one spot'),t('Snow over a roof area')],0,t('The wall distributes force along a length.')),
-        N(t('The highlighted beam carries a 4 m-wide strip of roof. The roof pressure is 3 kPa, or 3 kN per square metre. How much force does each metre of beam carry?'),12,'3 kN/m² × 4 m = 12 kN/m.',t('Multiply by tributary width.'),'kN/m'),
+        N(t('The highlighted beam carries a 5 m-wide strip of roof. The roof pressure is 2.6 kPa. How much force does each metre of beam carry?'),13,localizedEquation('2.6 kN/m² × 5 m = 13 kN/m.'),t('Multiply by tributary width.'),'kN/m'),
         N(t('A column receives 6 kPa from a 5 m × 4 m tributary area. Total force?'),120,'6 × 20 = 120 kN.',t('Area × pressure.'),'kN'),
         Q(t('Which is the usual gravity load path?'),[t('Deck → beam → girder → column → foundation'),t('Deck → foundation → girder → column'),t('Column → beam → deck → soil')],0,t('Loads flow to supports and then the ground.')),
         Q(t('A periodic excitation near the natural frequency can cause…'),[t('Resonance'),t('Reduced mass'),t('Zero acceleration')],0,t('Dynamic response can be amplified.')),
@@ -305,8 +305,9 @@ units[5].q.push(steelQ('S', 1200));
 
 
 const beams=[{L:8,a:0,b:8,points:[{x:2,p:24}],udls:[{s:4,e:8,w:8}]},{L:10,a:0,b:7,points:[{x:10,p:18}],udls:[{s:0,e:7,w:6}]},{L:8,a:0,b:8,points:[],udls:[{s:0,e:8,w:6}]}];
+const reviewBeam = { L: 6, a: 0, b: 6, points: [{ x: 2, p: 15 }], udls: [{ s: 2, e: 5, w: 4 }] };
 
-units[3].q.push(...beamQs(beams[0]).slice(0,2));units[4].q.push(...beamQs(beams[2]).slice(2),...beamQs(beams[1]).slice(2));
+units[3].q.push(...beamQs(reviewBeam).slice(0,2));units[4].q.push(...beamQs(beams[2]).slice(2),...beamQs(beams[1]).slice(2));
 
 const memberSign = t('For member forces, give a positive number in tension (pulling) or a negative number in compression (pushing).');
 const trussQs = [
@@ -318,17 +319,31 @@ const trussQs = [
 units[8].q.push(...trussQs);
 
 
-const latqs = [
-    {...N(t('Find the signed horizontal reaction at A (right positive).'),-90,'ΣFx=0: Ax+90=0, so Ax=−90 kN.',t('Only the pin can resist horizontal load.'),'kN'),fig:'lateral'},
-    {...N(t('Calculate the signed vertical reaction at B (up positive).'),180,'ΣMA=0: 5By−90×10=0, so By=180 kN.',t('Take moments around A.'),'kN'),fig:'lateral'},
-    {...N(t('Calculate signed vertical reaction at A (up positive).'),-180,t('ΣFy=0: Ay+180=0. Negative means uplift restraint is needed.'),t('No external vertical load.'),'kN'),fig:'lateral'},
-    {...N(t('Start at E. Calculate signed member ED (tension positive).'),-90*Math.SQRT2,t('ΣFx=0: 90+ED cos45°=0. ED=−127.28 kN, compression.'),t('Assume ED pulls down/right from E.'),'kN'),fig:'lateral'},
-    {...N(t('At E, ED=−127.279 kN. Find signed CE (tension positive).'),90,t('ED produces an upward 90 kN component at E. CE must pull downward by 90 kN.'),t('Vertical equilibrium at E.'),'kN'),fig:'lateral'},
-    {...N(t('Move to joint D. ED=−127.279 kN. Find signed CD (tension positive).'),90,t('At D, ED pushes right and down by 90 kN each. CD must pull left by 90 kN.'),t('Use horizontal equilibrium.'),'kN'),fig:'lateral'},
-    {...N(t('At D, with ED=−127.279 kN and CD=+90 kN, find signed BD.'),-90,t('ED pushes down by 90 kN at D; BD must push up (compression). BD=−90 kN.'),t('Vertical equilibrium.'),'kN'),fig:'lateral'},
-    {...N(t('At joint A, Ax=−90 kN, Ay=−180 kN. Find signed member AC.'),180,t('AC must pull vertically up by 180 kN.'),'Use ΣFy=0.','kN'),fig:'lateral'},
-    {...N(t('At joint A, Ax=−90 kN. Find signed member AB.'),90,t('AB pulls to the right by 90 kN.'),'Use ΣFx=0.','kN'),fig:'lateral'},
-    {...N(t('At joint B, RB=+180 kN, AB=+90 kN and BD=−90 kN. Find signed BC.'),-90*Math.SQRT2,t('BC pushes down/right at B by 90 kN in each direction. BC=−127.28 kN.'),t('Check both horizontal and vertical equations.'),'kN'),fig:'lateral'},
-    {...Q(t('Which members are in compression?'),[t('ED, BD and BC'),t('AC, CD and CE'),t('AB, AC and CE')],0,t('The three negative forces ED, BD and BC indicate compression; other members here are in tension.')),fig:'lateral'},
-].map((question, i) => i >= 3 && i <= 9 ? { ...question, setup: memberSign } : question);
+const practiceTrussLoad = 75;
+const latqs = practiceTrussQuestions(practiceTrussLoad);
+
+function practiceTrussQuestions(load) {
+    const vertical = 2 * load, diagonal = -load * Math.SQRT2;
+    const negative = numberText(diagonal);
+    return [
+        N(t('Find the signed horizontal reaction at A (right positive).'), -load, `ΣFₓ = Aₓ + ${load} kN = 0. Aₓ = −${load} kN.`, t('Only the pin can resist horizontal load.'), 'kN'),
+        N(t('Calculate the signed vertical reaction at B (up positive).'), vertical,
+            `ΣMₐ = (5 m)Bᵧ − (${load} kN)(10 m) = 0. Bᵧ = +${vertical} kN.`, t('Take moments around A.'), 'kN'),
+        N(t('Calculate signed vertical reaction at A (up positive).'), -vertical, `ΣFᵧ = Aᵧ + ${vertical} kN = 0. Aᵧ = −${vertical} kN.`, t('No external vertical load.'), 'kN'),
+        N(t('Start at E. Calculate signed member ED (tension positive).'), diagonal,
+            `ΣFₓ = ${load} kN + ED cos 45° = 0. ED ≈ ${negative} kN.`, t('Assume ED pulls down/right from E.'), 'kN'),
+        N(t`At joint E, ED is ${negative} kN. Find the signed force in CE.`, load,
+            `ΣFᵧ = ${load} kN − CE = 0. CE = +${load} kN.`, t('Vertical equilibrium at E.'), 'kN'),
+        N(t`At joint D, ED is ${negative} kN. Find the signed force in CD.`, load, `ΣFₓ = ${load} kN − CD = 0. CD = +${load} kN.`, t('Use horizontal equilibrium.'), 'kN'),
+        N(t`At joint D, ED is ${negative} kN and CD is +${load} kN. Find the signed force in BD.`, -load, `ΣFᵧ = −${load} kN − BD = 0. BD = −${load} kN.`, t('Vertical equilibrium.'), 'kN'),
+        N(t`At pin A, the reactions are Aₓ = −${load} kN and Aᵧ = −${vertical} kN. Find the signed force in AC.`, vertical,
+            `ΣFᵧ = −${vertical} kN + AC = 0. AC = +${vertical} kN.`, 'ΣFᵧ = 0.', 'kN'),
+        N(t`The horizontal reaction at A is −${load} kN. Find the signed force in AB.`, load,
+            `ΣFₓ = −${load} kN + AB = 0. AB = +${load} kN.`, 'ΣFₓ = 0.', 'kN'),
+        N(t`At roller B, Bᵧ is +${vertical} kN, AB is +${load} kN, and BD is −${load} kN. Find the signed force in BC.`, diagonal,
+            `ΣFₓ = −${load} kN − BC cos 45° = 0. BC ≈ ${negative} kN.`, t('Check both horizontal and vertical equations.'), 'kN'),
+        Q(t('Which members are in compression?'), [t('ED, BD and BC'), t('AC, CD and CE'), t('AB, AC and CE')], 0,
+            t('The three negative forces ED, BD and BC indicate compression; other members here are in tension.')),
+    ].map((question, i) => ({ ...question, fig: 'lateral', ...(i >= 3 && i <= 9 ? { setup: memberSign } : {}) }));
+}
 units[8].q.push(...latqs.slice(0,5));units[9].q.push(...latqs.slice(5));

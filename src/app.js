@@ -61,7 +61,8 @@ function beamWorkshopQuestions(beam, key) {
     ].map((question, j) => ({ ...question, key: `${key}-${j}`, topic: t('Integrated beam analysis') }));
 }
 
-const beamPractice = beamWorkshopQuestions(beams[0], 'workshop');
+const beamPractice = beamWorkshopQuestions({ L: 9, a: 0, b: 9, points: [{ x: 3, p: 18 }],
+    udls: [{ s: 5, e: 9, w: 7 }] }, 'workshop');
 const beamExam = beamWorkshopQuestions({ L: 7, a: 0, b: 7, points: [{ x: 5, p: 15 }],
     udls: [{ s: 0, e: 4, w: 6 }] }, 'beam-exam');
 const trussPractice = latqs.map((question, j) => ({
@@ -154,7 +155,7 @@ function show(html) {
 }
 
 function learningProgress() {
-    const count = unitOrder.filter(workshopFinished).length;
+    const count = unitOrder.filter(i => workshopStars(i)).length;
     const total = unitOrder.length;
     const misses = [...questionBank.values()].filter(question => state.miss[question.key]).length;
     const levels = Math.min(6, Math.floor(count * 6 / total));
@@ -177,9 +178,11 @@ function learningProgress() {
 }
 
 function learningTile(i) {
-    const total = workshops[i].turns.length;
-    const records = workshopProgress.runs[i]?.records;
+    const run = workshopProgress.runs[i];
+    const total = workshopVersion(i, attemptNumber(run)).turns.length;
+    const records = run?.records;
     const done = Array.isArray(records) ? records.slice(0, total).filter(record => ['correct', 'shown'].includes(record?.status)).length : 0;
+    const stars = workshopStars(i);
     const state = workshopFinished(i) ? 'complete' : Array.isArray(records) ? 'in-progress' : 'not-started';
     const status = {
         complete: ['✓', t('Complete')], 'in-progress': ['◐', t('In progress')], 'not-started': ['○', t('Not started')],
@@ -188,7 +191,8 @@ function learningTile(i) {
         <span class="num" aria-hidden="true">${unitNumber(i)}</span>
         <span class="details"><span class="unit-name">${units[i].title}</span>
             <span class="unit-status"><span class="unit-badge"><span aria-hidden="true">${status[0]}</span> ${status[1]}</span>
-                ${state === 'in-progress' ? `<small>${t`${done} of ${total} steps done`}</small>` : ''}</span>
+                ${state === 'in-progress' ? `<small>${t`${done} of ${total} steps done`}</small>` : ''}
+                ${stars ? `<span class="earned-stars">${starCount(stars)}</span>` : ''}</span>
             ${state === 'in-progress' ? `<span class="unit-meter" aria-hidden="true" style="--steps-done:${done / total * 100}%"></span>` : ''}
         </span>
         <span class="unit-arrow" aria-hidden="true">↗</span></button>`;
@@ -199,7 +203,7 @@ function home() {
     session = undefined;
     saveProgress();
     const destination = nextWorkshop();
-    const resume = Boolean(workshopProgress.runs[destination]?.records?.length && !workshopFinished(destination));
+    const resume = Array.isArray(workshopProgress.runs[destination]?.records) && !workshopFinished(destination);
     show(`<div class="hero tutor-home">
         <div class="hero-copy">
             <div class="eyebrow">${t`ARCH 600 · Structures for Architects I`}</div>
@@ -704,6 +708,8 @@ function finish() {
 
 const actions = {
     home, unit: value => openWorkshop(Number(value)),
+    'redo-workshop': value => redoWorkshop(Number(value)),
+    'review-workshop': value => openWorkshop(...value.split('/').map(Number)),
     practice: value => startPractice(Number(value)), 'practice-menu': practiceMenu,
     final: finalMenu, beam: () => startIntegratedPractice('beam'), truss: () => startIntegratedPractice('truss'), exam: startExam,
     weak, steel: showSteel, sheet: value => sheet(Number(value)), 'sheet-all': () => sheet(), refresh: openRefresher,
@@ -786,14 +792,14 @@ languageSelect.addEventListener('change', () => changeLanguage(languageSelect.va
 document.getElementById('home').textContent = t('Home');
 document.querySelector('meta[name="description"]').content = t("Teaching you things you don't really need to know but here we are.");
 saveProgress();
-const linkedWorkshop = /^#workshop-(\d+)$/.exec(location.hash);
-if (linkedWorkshop && workshops[Number(linkedWorkshop[1])]) {
+const linkedWorkshop = workshopLink();
+if (linkedWorkshop) {
     try { sessionStorage.removeItem(languageResumeKey); } catch { /* Storage may be unavailable. */ }
-    openWorkshop(Number(linkedWorkshop[1]));
+    openWorkshop(...linkedWorkshop);
 } else if (!resumeLanguageRoute()) home();
 
 window.addEventListener('hashchange', () => {
-    const match = /^#workshop-(\d+)$/.exec(location.hash);
-    if (match && workshops[Number(match[1])]) openWorkshop(Number(match[1]));
+    const match = workshopLink();
+    if (match) openWorkshop(...match);
     else if (activeWorkshop !== null) home();
 });

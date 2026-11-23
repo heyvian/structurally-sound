@@ -222,7 +222,7 @@ h1:focus, h2:focus { outline: none; }
 .val-portrait { display: block; position: relative; }
 .hero-val .val-portrait { filter: drop-shadow(16px 17px 0 #282e3228) drop-shadow(3px 4px 4px #181e2869); }
 .val-art { display: block; width: 100%; height: auto; }
-.val-gold { position: absolute; inset: 0; opacity: var(--val-gold, 0); transition: opacity .4s ease-out; }
+.val-gold { position: absolute; inset: 0; clip-path: inset(var(--val-blue-rows, 100%) 0 0); }
 .val-model {
     position: absolute;
     inset: 0;
@@ -330,6 +330,8 @@ h1:focus, h2:focus { outline: none; }
 .unit-status small { margin: 0; color: var(--unit-status-ink); }
 .unit-meter { display: block; height: 6px; margin-top: 7px; background: #dde2ec; }
 .unit-meter::before { content: ""; display: block; height: 100%; width: var(--steps-done); background: var(--unit-status-ink); }
+.earned-stars { display: inline-block; color: #673c04; background: #fff1b7; padding: 3px 6px; border: 1px solid #b47d2f; font: 750 11px/1.3 var(--mono); }
+.hero-star-count { position: absolute; z-index: 2; bottom: 9%; right: 0; box-shadow: 2px 2px 0 #3b2d294c; pointer-events: none; }
 
 .panel, .lesson {
     border: 1px solid var(--ink);
@@ -627,6 +629,11 @@ legend { padding: 0 6px; font: 700 13px var(--mono); }
 .plot-tooltip rect { fill: #19284b; }
 .plot-tooltip text { fill: white; font-weight: 700; }
 .graph-clear { min-height: 36px; padding: 5px 8px; }
+.graph-height-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.graph-height-controls label { display: grid; gap: 3px; font: 700 12px/1.4 var(--mono); }
+.graph-height-controls input { width: 13ch; min-height: 36px; }
+.graph-height-controls select { min-height: 36px; max-width: 100%; }
+.graph-height-controls button { min-height: 36px; padding: 5px 8px; }
 .plot-preview circle { stroke: #714704; stroke-width: 2; fill: #f6d28d; }
 .graph-station-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
 .graph-station-buttons button { padding: 7px 9px; min-height: 36px; font: 700 12px/1.3 var(--mono); }
@@ -764,7 +771,6 @@ tbody tr:nth-child(even) { background: #f0eee3; }
 @media (prefers-reduced-motion: reduce) {
     button { transition: none; }
     .val-entrance, .val-pop { animation: none; }
-    .val-gold { transition: none; }
 }
 
 @media print {

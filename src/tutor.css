@@ -23,6 +23,14 @@
 .tutor-session-heading .eyebrow { margin: 12px 0 4px; color: var(--blue); }
 .tutor-session-heading h1 { margin: 5px 0 2px; }
 .tutor-session-heading progress { margin: 2px 0 0; }
+.tutor-session-heading .tutor-attempts { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 4px 0; }
+.tutor-attempts p { margin: 0; font: 700 12px var(--mono); }
+.tutor-attempts button, .tutor-attempt-list summary { min-height: 36px; font-size: 13px; }
+.tutor-attempt-list { min-width: min(100%, 164px); padding: 3px 8px; margin: 0; }
+.tutor-attempt-list summary { line-height: 36px; }
+.tutor-attempt-list button, .tutor-attempt-list strong { display: block; margin: 4px 0; }
+.attempt-reward { color: #74400b; font-weight: 750; }
+.attempt-reward span { font-size: 22px; }
 .tutor-board {
     display: grid;
     grid-template-columns: minmax(0, 1.27fr) minmax(0, .95fr);
@@ -169,6 +177,23 @@
     outline: none;
     font-size: clamp(24px, 4vw, 35px);
 }
+.tutor-problem {
+    margin: 17px 0 0 51px;
+    padding: clamp(10px, 2vw, 16px);
+    min-width: 0;
+    border: 1px solid #7487bd;
+    border-top: 4px solid var(--blue);
+    background: #f5f7fd;
+    box-shadow: 3px 3px 0 #cbd3e9;
+}
+.tutor-question-label {
+    margin: 0 0 4px;
+    color: var(--blue);
+    font: 750 11px/1.35 var(--mono);
+    letter-spacing: .055em;
+    text-transform: uppercase;
+}
+.tutor-problem .tutor-prompt { padding: 0; margin: 0 0 11px; }
 .tutor-choices, .tutor-number-form, .tutor-calculator, .tutor-controls, .tutor-refresh, .tutor-sketch, .tutor-solution-plot {
     margin-left: 51px;
 }
@@ -275,6 +300,9 @@
 .tutor-refresh-links { display: flex; flex-wrap: wrap; gap: 5px; }
 .tutor-refresh-links button { min-height: 34px; padding: 4px 7px; box-shadow: none; font: 700 11px/1.3 var(--mono); }
 .tutor-sketch + button { margin: 3px 0 8px 51px; }
+.tutor-problem :is(.tutor-choices, .tutor-number-form, .tutor-calculator, .tutor-sketch, .tutor-solution-plot,
+    .tutor-sketch + button, .lesson-fbd-options, .tutor-units, .tutor-reply, .refresher-offer) { margin-left: 0; }
+.tutor-problem .tutor-choices { margin-bottom: 0; }
 .tutor-finish {
     padding: 20px;
     border: 1px solid #7184a9;
@@ -305,6 +333,7 @@
     .tutor-drawing-frame > .diagram:not(.truss-workshop) { width: 100%; }
 }
 @media (max-width: 420px) {
+    .tutor-problem { margin-left: 0; }
     .tutor-note { grid-template-columns: 32px minmax(0, 1fr); gap: 5px; }
     .tutor-portrait { width: 32px; min-height: 38px; }
     .tutor-speech { padding: 7px 8px; }
