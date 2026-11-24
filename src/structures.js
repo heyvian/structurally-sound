@@ -61,7 +61,7 @@ function graphQuestion(beam, kind) {
     return {
         type: 'graph', kind, b: beam, stations, shapes,
         answer: stations.map(({ v }) => v),
-        prompt: t`Construct the ${moment ? t('bending moment') : 'shear'} diagram.`,
+        prompt: moment ? t('Construct the bending moment diagram.') : t('Construct the shear diagram.'),
         hint: moment
             ? t('Use signed area under V. A smooth extremum occurs where V crosses zero.')
             : t('Start at zero outside the beam. Jump at point forces and slope under distributed loads.'),
