@@ -241,6 +241,7 @@ function conceptPlate(id) {
 }
 
 function practiceDrawing(question, solved = false) {
+    if (question.trussQuiz) return trussQuizPracticeDrawing(question, solved);
     if (question.sectionCase) return sectionPracticeFigure(question, solved);
     if (question.type === 'fbd') return fbdDrawing(question, solved ? question.answer : undefined, solved);
     if (question.shearSegment) return shearSegmentFigure(question.shearSegment, { base: solved, crossing: solved, area: solved });

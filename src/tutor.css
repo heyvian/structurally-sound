@@ -572,3 +572,18 @@
 .section-ledger-active { background: #f4dfc2; }
 .section-totals { display: flex; flex-wrap: wrap; gap: 3px 12px; margin: 5px 0 0; color: var(--blue); font: 700 12px/1.4 var(--mono); }
 .section-totals:empty { display: none; }
+
+.truss-quiz-member, .truss-quiz-arm, .truss-quiz-axis, .truss-quiz-ghost { fill: none; }
+.truss-quiz-member { stroke: #37404b; stroke-width: 2.5; }
+.truss-quiz-member.tension { stroke: var(--blue); }
+.truss-quiz-member.compression { stroke: var(--red); }
+.truss-quiz-arm { stroke: #8e571f; stroke-width: 2; stroke-dasharray: 5 3; }
+.truss-quiz-ghost { stroke: #62819e; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.truss-quiz-emph { stroke: #a4652e; stroke-width: 2.8; }
+.truss-quiz-axis, .truss-quiz-node { stroke: var(--ink); stroke-width: 1.5; }
+.truss-quiz-node { fill: var(--white); }
+.truss-quiz-assumed .force-glyph { color: #49596a; }
+.truss-quiz-assumed .force-glyph > path { stroke-dasharray: 5 4; }
+.diagram .truss-quiz-label { paint-order: stroke; stroke: #f3f6fa; stroke-width: 3; }
+.truss-quiz-components th.truss-quiz-sum, .truss-quiz-components td.truss-quiz-sum { background: #f4e5ca; color: #593513; }
+.truss-quiz-key { margin: 7px 0 0; font: 700 12px/1.4 var(--mono); }
