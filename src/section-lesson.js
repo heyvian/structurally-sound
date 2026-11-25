@@ -71,7 +71,7 @@ function centroidCalculation(model, axis, short = false) {
         short ? (sum, area) => sum / area : (a1, c1, a2, c2, area) => (a1 * c1 + a2 * c2) / area);
 }
 
-function sectionLessonVersion(attempt) {
+function sectionLessonVersion(attempt, visuals = true) {
     const n = numberText;
     const repeat = attempt - 1;
     const table = repeat ? steelQ('S', 325 + 20 * repeat, steelSmall) : null;
@@ -82,8 +82,8 @@ function sectionLessonVersion(attempt) {
     const turns = [];
     let model = rectangle, kind = 'rectangle';
     const step = (key, intro, prompt, expected, unit, solution, extra = {}) => {
-        const { part, dimension, symmetry, ...exercise } = extra;
-        turns.push(num(intro, prompt, expected, unit, solution, { section: { model, kind, key, part, dimension, symmetry }, ...exercise }));
+        const { part, dimension, symmetry, concept, ...exercise } = extra;
+        turns.push(num(intro, prompt, expected, unit, solution, { section: { model, kind, key, part, dimension, symmetry, concept }, ...exercise }));
     };
     const choice = (key, intro, prompt, choices, answer, solution, detail = {}) => {
         turns.push(pick(intro, prompt, choices, answer, solution, { section: { model, kind, key, ...detail } }));
@@ -194,6 +194,29 @@ function sectionLessonVersion(attempt) {
 
     model = tee;
     kind = 'tee';
+    if (visuals) {
+        choice('neutral-axis', t('Picture the T as the cross-section of a beam that bends downward. Look at the beam from the side. Material near the top shortens and material near the bottom stretches. The line through the centroid keeps its length in this bending example.'),
+            t('Which line is the neutral axis in this bend?'),
+            [['mid',t('The dashed line through the centroid')], ['top',t('The top edge'),t('The top is changing length. Look for the line between shortening and stretching.')],
+                ['bottom',t('The bottom edge'),t('The bottom stretches. The neutral axis is where the length stays the same.')]],
+            'mid', t('The dashed line is where the bending strain is zero. On the section drawing it passes through the centroid. Now we can measure how far the material is from that line.'), { concept: 'neutral' });
+        turns.at(-1).hot = ['mid', 'top', 'bottom'];
+        step('square-distance', t('Moment of inertia here means second moment of area. Think of tiny pieces of area. Measure the perpendicular distance d from the bending axis to each piece. The distance term in the drawing multiplies each area by d². Add up this effect across the section to understand why material far from the axis matters more.'),
+            t('What is A × d² for 1 mm² of area at 3 mm from the axis?'), 9, 'mm⁴',
+            t('At 1 mm the distance term is 1 × 1² = 1 mm⁴. At 3 mm it is 1 × 3² = 9 mm⁴. For equal areas, tripling the distance makes this term nine times as large.'),
+            { concept: 'squares', units: t('An area in mm² times a squared distance in mm² gives mm⁴.'),
+                wrong: [[3, t('Multiply the area by the distance squared. The distance contributes 3 × 3.')]] });
+        choice('turn-rectangle', t('Look at two copies of the same rectangle. The horizontal bending axis runs through the centre of each. On edge, more material sits far above or below that line.'),
+            t('Which orientation gives a larger I about the horizontal axis?'),
+            [['tall',t('On edge')], ['flat',t('Flat'),t('The flat rectangle keeps more of its area close to the horizontal axis.')],
+                ['same',t('They are equal'),t('Both have the same area. Compare how far that area reaches from the axis.')]],
+            'tall', t('The taller orientation gives a larger I. With the same material, a larger I means a stiffer beam in this direction. It takes more moment to make the same bend.'), { concept: 'orientation' });
+        choice('depth-direction', t('For a rectangle, add the contributions of all its strips about its own horizontal centreline. The result is I₀ = bh³/12. The width b counts how much area is in each strip. The height h governs both the number of strips and how far they reach from the axis.'),
+            t('Which dimension is cubed for this horizontal axis?'),
+            [['height',t('The height h across the axis')], ['width',t('The width b along the axis'),t('Width multiplies every strip once. The squared distances are across the height.')]],
+            'height', t('Use the dimension perpendicular to the axis for h. The drawing now connects the marked b and h to the formula you will use on the web and flange.'),
+            { concept: 'depth' });
+    }
     const localUnits = t('b × h³ has units mm × mm³ = mm⁴.');
     for (const [i, part] of tee.parts.entries()) {
         const id = '₁₂'[i];
@@ -207,11 +230,11 @@ function sectionLessonVersion(attempt) {
                 calculation: i === 0 ? paperCalculation('I₀', label, 'mm⁴',
                     [['b', t('Width parallel to the axis'), 'mm', part.width], ['h', t('Depth perpendicular to the axis'), 'mm', part.depth]],
                     [0, '× (', 1, ')³'], ['12'], (width, depth) => width * depth ** 3 / 12) : undefined });
-        step('d' + i, t('To transfer this rectangle to the T’s combined axis, measure the vertical gap between the two drawn axes. Subtract the smaller height from the larger one to get the positive distance d.'),
+        step('d' + i, t('Keep this rectangle in place and change the line you measure from. Its own centreline gives the local I₀. To use the T’s combined axis, measure the vertical gap d between the two lines.'),
             t('What is the distance d from the highlighted rectangle’s centre to the combined axis?'), part.offset, 'mm',
             `d${id} = |${n(tee.cy)} mm − ${n(part.cy)} mm| ≈ ${n(part.offset)} mm.`,
             { part: i, dimension: 'offset', legacy: i === 0 ? repeat ? 2 : 3 : undefined });
-        step('shift' + i, t('The parallel-axis theorem adds A d² to the local I. Square the distance between the axes, then multiply by this piece’s area. Use the unrounded centroid and distance when you can.'),
+        step('shift' + i, t('The local I₀ already counts the spread within the rectangle. Add A d² to count the effect of the whole rectangle being offset from the combined axis. If the two lines coincide, d = 0 and the extra term vanishes.'),
             t('What is the shift term A d² for the highlighted rectangle?'), part.shift, 'mm⁴',
             `A${id}d${id}² ≈ (${n(part.area)} mm²) × (${n(part.offset)} mm)² ≈ ${n(part.shift)} mm⁴.`,
             { part: i, dimension: 'offset', units: t('An area in mm² times a squared distance in mm² gives mm⁴.') });
@@ -246,5 +269,5 @@ function sectionLessonVersion(attempt) {
     const final = repeat ? repeatProblem(table, t`Keep rows with Sₓ at least ${n(target)} in the table units, then compare their mass per metre.`,
         { figure: () => workshopFigure(steelTable(table.rows)) }) : original.turns.at(-1);
     turns.push({ ...final, legacy: repeat ? 5 : 6 });
-    return { ...original, index: 6, sectionLesson: true, repeat: Boolean(repeat), turns };
+    return { ...original, index: 6, sectionLesson: true, sectionVisual: visuals, repeat: Boolean(repeat), turns };
 }

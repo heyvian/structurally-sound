@@ -90,8 +90,10 @@ function sectionLessonDrawing(workshop, run, index) {
     const detail = workshop.turns[index].section;
     const { model, kind } = detail;
     const record = run.records[index];
+    const checked = Boolean(record?.status);
+    if (detail.concept) return sectionConceptDrawing(detail, checked);
     const values = sectionLessonValues(workshop, run, index);
-    const draft = record?.status ? undefined : diagramDraft(record?.draft, record?.draftLocale).value;
+    const draft = checked ? undefined : diagramDraft(record?.draft, record?.draftLocale).value;
     const drawing = sectionPlate(model, kind, values, detail, draft);
     if (kind === 'rectangle') return drawing;
     const inertia = ['local', 'offset', 'bottom', 'top'].includes(detail.dimension) || detail.key === 'governing';
@@ -102,7 +104,18 @@ function sectionLessonDrawing(workshop, run, index) {
         ['y', 'mm', i => values['y' + i]], ...(kind === 'tee' ? [['Ay', 'mm³', i => values['qy' + i]]] : []),
     ];
     const number = value => Number.isFinite(value) ? numberText(value) : '—';
-    drawing.tools = `<table class="section-ledger"><thead><tr>
+    const part = model.parts[detail.part];
+    let explainer = '';
+    if (part && (detail.key === 'x' + detail.part || detail.key === 'y' + detail.part)) {
+        explainer = sectionCoordinatePlate(model, part, detail.dimension, checked);
+    } else if (kind === 'tee') {
+        if (detail.key === 'weight') explainer = centroidBalance(model, !checked);
+        if (detail.key === 'cy' && checked) explainer = centroidBalance(model, false, model.cy);
+        if (part && detail.dimension === 'local') explainer = localStripPlate(part);
+        if (part && detail.dimension === 'offset') explainer = sectionShiftPlate(model, part, Number.isFinite(values['d' + detail.part]));
+        if (['bottom', 'top'].includes(detail.dimension) || detail.key === 'governing') explainer = sectionStressPlate(model, values);
+    }
+    drawing.tools = `${explainer ? `<div class="section-explainer">${explainer}</div>` : ''}<table class="section-ledger"><thead><tr>
         <th scope="col">${t('Piece')}</th>${columns.map(([name, unit]) => `<th scope="col">${name}<small>${unit}</small></th>`).join('')}
         </tr></thead><tbody>${model.parts.map((p,i) => `<tr ${i === detail.part ? 'class="section-ledger-active"' : ''}>
             <th scope="row">${i + 1} · ${sectionPartName(p.name)}</th>${columns.map(([, , value]) => `<td>${number(value(i))}</td>`).join('')}</tr>`).join('')}

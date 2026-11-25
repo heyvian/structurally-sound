@@ -16,8 +16,10 @@ function workshopVersion(index, attempt = 1, run) {
         return repeatVersions.get(key);
     }
     if (index === 6 && (!run?.finished || run.sectionRevision)) {
-        if (!sectionVersions.has(attempt)) sectionVersions.set(attempt, sectionLessonVersion(attempt));
-        return sectionVersions.get(attempt);
+        const visuals = !run?.finished || Boolean(run.sectionVisual);
+        const key = `${attempt}/${visuals}`;
+        if (!sectionVersions.has(key)) sectionVersions.set(key, sectionLessonVersion(attempt, visuals));
+        return sectionVersions.get(key);
     }
     if (Object.hasOwn(beamLabTitles, index)) {
         const key = `${index}/${attempt}`;

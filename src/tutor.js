@@ -40,7 +40,16 @@ function workshopRun(i) {
             records.filter(record => record?.status === 'correct').length;
         const sectionProgressFloor = previous.length ? previous.filter(record => record?.status).length /
             workshopVersion(i, attempt, { finished: true }).turns.length : 0;
-        return workshopProgress.runs[i] = { cursor: 0, records, attempt, sectionRevision: true, priorCorrect, sectionProgressFloor };
+        return workshopProgress.runs[i] = { cursor: 0, records, attempt, sectionRevision: true, sectionVisual: true, priorCorrect, sectionProgressFloor };
+    }
+    if (i === 6 && saved?.sectionRevision && !saved.sectionVisual && !saved.finished && Array.isArray(saved.records)) {
+        const updated = workshopVersion(i, attemptNumber(saved));
+        const bridge = updated.turns.findIndex(turn => turn.section?.concept);
+        let previous = 0;
+        const records = updated.turns.map(turn => turn.section?.concept ? undefined : saved.records[previous++]);
+        const progress = saved.records.filter(record => record?.status).length / previous;
+        const sectionProgressFloor = Math.max(saved.sectionProgressFloor ?? 0, progress);
+        return workshopProgress.runs[i] = { ...saved, records, cursor: Math.min(saved.cursor, bridge), sectionVisual: true, sectionProgressFloor };
     }
     if (saved && Array.isArray(saved.records) && Number.isInteger(saved.cursor) &&
         saved.cursor >= 0 && saved.cursor <= workshopVersion(i, attemptNumber(saved), saved).turns.length) return saved;
@@ -314,7 +323,7 @@ function renderTutor(index, focus = 'title') {
     const attempt = attemptNumber(run);
     const workshop = workshopVersion(index, attempt, run);
     const complete = run.cursor === workshop.turns.length;
-    const redoLabel = index === 6 && !workshop.sectionLesson ? t('Start the expanded lesson') : t('Redo with new problems');
+    const redoLabel = index === 6 && !workshop.sectionVisual ? t('Start the expanded lesson') : t('Redo with new problems');
     const topic = workshop.beam ? 4 : workshop.topic ?? index;
     const title = units[topic].title;
     const following = unitOrder[unitOrder.indexOf(topic) + 1];
@@ -529,6 +538,7 @@ function bindTutor(root, workshop, run, redraw, workshopIndex) {
         } });
     }
     const board = root.querySelector('[data-active-step]');
+    if (turn?.section?.key === 'weight') bindSectionBalance(root, turn.section.model);
     if (workshop.beam && board) bindBeamLabGuide(board, workshop.beam.L, (value, onShear) => {
         run.guide = value;
         if (!record.status && turn.labPlot && onShear) {
