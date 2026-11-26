@@ -69,18 +69,18 @@ function workshopStars(i) {
 }
 
 function totalStars() {
-    return [...workshops.keys(), ...Object.keys(beamLabTitles), 'truss-quiz'].reduce((sum, i) => sum + workshopStars(i), 0);
+    return [...workshops.keys(), ...Object.keys(beamLabTitles), ...Object.keys(trussWorkshopTitles)].reduce((sum, i) => sum + workshopStars(i), 0);
 }
 
 function workshopXp() {
-    const runs = [...workshops.keys(), ...Object.keys(beamLabTitles), 'truss-quiz'].flatMap(i => [...archivedRuns(i), workshopProgress.runs[i]]);
+    const runs = [...workshops.keys(), ...Object.keys(beamLabTitles), ...Object.keys(trussWorkshopTitles)].flatMap(i => [...archivedRuns(i), workshopProgress.runs[i]]);
     return runs.reduce((sum, run) => sum +
         (Array.isArray(run?.records) ? (run.records.filter(record => record?.status === 'correct').length + (run.priorCorrect ?? 0)) * 10 : 0), 0);
 }
 
 function nextWorkshop() {
     const recent = workshopProgress.recent;
-    if ((workshops[recent] || Object.hasOwn(beamLabTitles, recent) || recent === 'truss-quiz') && !workshopFinished(recent)) return recent;
+    if ((workshops[recent] || Object.hasOwn(beamLabTitles, recent) || Object.hasOwn(trussWorkshopTitles, recent)) && !workshopFinished(recent)) return recent;
     return unitOrder.find(i => !workshopStars(i)) ?? unitOrder[0];
 }
 
@@ -347,8 +347,9 @@ function renderTutor(index, focus = 'title') {
         </div>
         ${index === 4 || workshop.beam ? beamLabNavigation(index) : ''}
         ${topic === 8 ? `<nav class="beam-lab-nav" aria-label="${t('Truss analysis')}">
-            ${index === 'truss-quiz' ? `<span aria-current="page">${trussQuizTitle}</span>` : `<a href="#workshop-truss-quiz">${trussQuizTitle}</a>`}
-            ${button(trussPracticeTitle, 'quiz-truss-practice')}
+            ${Object.entries(trussWorkshopTitles).map(([key, name]) =>
+                index === key ? `<span aria-current="page">${name}</span>` : `<a href="#workshop-${key}">${name}</a>`).join('')}
+            ${button(trussTaPracticeTitle, 'quiz-truss-practice', 'vertical')}${button(trussPracticeTitle, 'quiz-truss-practice')}
         </nav>` : ''}
         ${tutorHistory(workshop, run)}
         ${complete ? `<article class="tutor-finish" tabindex="-1"><div class="tutor-celebrate val-pop">${valPortrait('cheer')}</div>
@@ -358,7 +359,7 @@ function renderTutor(index, focus = 'title') {
                 <button data-tutor="print-workshop" type="button">${t('Print lesson')}</button>
                 ${reviewing ? button(t('Current attempt'), 'unit', index) : button(redoLabel, 'redo-workshop', index, 'primary')}
                 ${workshop.beam ? button(index === 'beam-a' ? beamLabTitles['beam-b'] : t('Independent beam practice'), 'unit',
-                    index === 'beam-a' ? 'beam-b' : 'beam-practice', 'primary') : index === 'truss-quiz' ? button(trussPracticeTitle, 'quiz-truss-practice', '', 'primary') : button(t('Try practice questions'), 'practice', index)}
+                    index === 'beam-a' ? 'beam-b' : 'beam-practice', 'primary') : index === 'truss-ta' ? button(trussTaPracticeTitle, 'quiz-truss-practice', 'vertical', 'primary') : index === 'truss-quiz' ? button(trussPracticeTitle, 'quiz-truss-practice', '', 'primary') : button(t('Try practice questions'), 'practice', index)}
                 ${workshop.beam ? '' : following === undefined ? button(t('Practice exams'), 'final', '', 'primary') :
                     button(t('Next topic →'), 'unit', following, 'primary')}</div>
         </article>` : tutorTurn(workshop, run, false)}
@@ -380,7 +381,7 @@ function renderTutor(index, focus = 'title') {
 
 function openWorkshop(index, review = null) {
     if (index === 'beam-practice') { openBeamPractice(); return; }
-    if (!workshops[index] && !Object.hasOwn(beamLabTitles, index) && index !== 'truss-quiz') return;
+    if (!workshops[index] && !Object.hasOwn(beamLabTitles, index) && !Object.hasOwn(trussWorkshopTitles, index)) return;
     session = undefined;
     activeWorkshop = index;
     archiveAttempt = archivedRuns(index).some(run => attemptNumber(run) === review) ? review : null;
@@ -400,10 +401,10 @@ function redoWorkshop(index) {
 }
 
 function workshopLink() {
-    const match = /^#workshop-(\d+|beam-a|beam-b|beam-ramp|beam-practice|truss-quiz)(?:\/attempt-(\d+))?$/.exec(location.hash);
+    const match = /^#workshop-(\d+|beam-a|beam-b|beam-ramp|beam-practice|truss-quiz|truss-ta)(?:\/attempt-(\d+))?$/.exec(location.hash);
     if (!match) return null;
     const index = workshopKey(match[1]);
-    return workshops[index] || Object.hasOwn(beamLabTitles, index) || index === 'beam-practice' || index === 'truss-quiz' ? [index, match[2] ? Number(match[2]) : null] : null;
+    return workshops[index] || Object.hasOwn(beamLabTitles, index) || index === 'beam-practice' || Object.hasOwn(trussWorkshopTitles, index) ? [index, match[2] ? Number(match[2]) : null] : null;
 }
 
 const workshopKey = value => /^\d+$/.test(value) ? Number(value) : value;

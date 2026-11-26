@@ -10,9 +10,9 @@ const shearVersions = new Map();
 const sectionVersions = new Map();
 
 function workshopVersion(index, attempt = 1, run) {
-    if (index === 'truss-quiz') {
+    if (Object.hasOwn(trussWorkshopTitles, index)) {
         const key = `${index}/${attempt}`;
-        if (!repeatVersions.has(key)) repeatVersions.set(key, trussQuizWorkshop(attempt));
+        if (!repeatVersions.has(key)) repeatVersions.set(key, index === 'truss-ta' ? trussTaWorkshop(attempt) : trussQuizWorkshop(attempt));
         return repeatVersions.get(key);
     }
     if (index === 6 && (!run?.finished || run.sectionRevision)) {

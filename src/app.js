@@ -73,9 +73,10 @@ const trussExam = trussQs.map((question, j) => ({
 }));
 const diagramExercises = Object.keys(fbdCases).map(kind => ({ ...fbdQuestion(kind), key: `fbd-${kind}`, topic: units[2].title, topicIndex: 2 }));
 const trussQuizPractice = makeTrussQuizPractice();
+const trussTaPractice = makeTrussTaPractice();
 const questionBank = new Map([
     ...unitQuestions.flat(), ...calculationCards, ...guidedQuestions.flat(),
-    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam, ...diagramExercises, ...trussQuizPractice,
+    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam, ...diagramExercises, ...trussQuizPractice, ...trussTaPractice,
 ].map(question => [question.key, question]));
 
 let session;
@@ -214,7 +215,7 @@ function home() {
             <h1><span class="hero-brand">Dr. FixBoi®’s</span> <span>Structurally</span> <em>Sound</em></h1>
             <p class="hero-tagline">${t`Teaching you things you don't really need to know but here we are.`}</p>
             <div class="home-start">${button(resume ? t('Resume workshop →') : t('Start learning →'), 'unit', destination, 'primary hero-link')}
-                ${resume ? `<small>${destination === 'truss-quiz' ? trussQuizTitle : workshops[destination]?.title ?? beamLabTitles[destination]}</small>` : ''}</div>
+                ${resume ? `<small>${trussWorkshopTitles[destination] ?? workshops[destination]?.title ?? beamLabTitles[destination]}</small>` : ''}</div>
         </div>
         <figure class="hero-scene">
             ${heroVal()}
@@ -241,7 +242,7 @@ function practiceMenu() {
     show(`${button(t('‹ Learning path'), 'home')}<section class="lesson">
         <h1>${t`Practice questions`}</h1><p>${t`Choose a topic to try other problems. Worked methods are available beside the questions.`}</p>
         <div class="course-index">${unitOrder.map(i => button(units[i].title, 'practice', i)).join('')}
-            ${button(beamPracticeTitle, 'unit', 'beam-practice')}${button(trussPracticeTitle, 'quiz-truss-practice')}</div>
+            ${button(beamPracticeTitle, 'unit', 'beam-practice')}${button(trussTaPracticeTitle, 'quiz-truss-practice', 'vertical')}${button(trussPracticeTitle, 'quiz-truss-practice')}</div>
     </section>`);
 }
 
@@ -715,7 +716,10 @@ const actions = {
     'redo-workshop': value => redoWorkshop(workshopKey(value)),
     'review-workshop': value => { const [key, attempt] = value.split('/'); openWorkshop(workshopKey(key), Number(attempt)); },
     practice: value => startPractice(Number(value)), 'practice-menu': practiceMenu,
-    'quiz-truss-practice': () => begin(practiceCards(trussQuizPractice), { mode: 'practice', unit: 8, title: trussPracticeTitle }),
+    'quiz-truss-practice': value => {
+        const vertical = value === 'vertical';
+        begin(practiceCards(vertical ? trussTaPractice : trussQuizPractice), { mode: 'practice', unit: 8, title: vertical ? trussTaPracticeTitle : trussPracticeTitle });
+    },
     final: finalMenu, beam: () => startIntegratedPractice('beam'), truss: () => startIntegratedPractice('truss'), exam: startExam,
     weak, steel: showSteel, sheet: value => sheet(Number(value)), 'sheet-all': () => sheet(), refresh: openRefresher,
     restraint: key => {
