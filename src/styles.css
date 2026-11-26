@@ -86,6 +86,49 @@ header {
 
 main { width: min(100%, 75rem); margin: auto; padding: 29px 24px 72px; }
 
+.theory-flashcards { max-width: 52rem; margin: 0 auto; }
+.theory-flashcards > h1 { margin: 12px 0 6px; }
+.theory-flashcards > p { margin: 0 0 20px; color: var(--muted); }
+.flashcard-toolbar, .flashcard-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.flashcard-toolbar { margin-bottom: 14px; }
+.flashcard-toolbar > label { font: 700 13px/1.4 var(--mono); }
+.flashcard-toolbar > select { flex: 1 1 13rem; min-width: 0; max-width: 100%; min-height: 42px; }
+.flashcard-panel {
+    min-height: 13rem;
+    padding: clamp(15px, 3vw, 28px);
+    border: 1px solid var(--ink);
+    border-top: 5px solid var(--blue);
+    background: var(--white);
+    box-shadow: 5px 5px 0 #b8b5a8;
+}
+.flashcard-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; color: var(--blue); font: 700 12px/1.4 var(--mono); }
+.flashcard-panel h2 { margin: 16px 0 19px; font-size: clamp(28px, 4vw, 44px); }
+.flashcard-panel .flashcard-mark { min-height: 38px; font-size: 13px; box-shadow: none; }
+.flashcard-mark[aria-pressed="true"] { background: var(--acid); border-color: var(--ink); }
+.flashcard-mark[aria-pressed="true"]::before { content: '✓'; margin-right: .5em; }
+.flashcard-answer:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 16px;
+    padding: 13px;
+    border-left: 3px solid var(--blue);
+    background: #eaf0f8;
+}
+.flashcard-answer > p { flex: 1 1 19rem; margin: 0; overflow-wrap: anywhere; }
+.flashcard-answer > figure { flex: 1 1 15rem; max-width: 19rem; min-width: 0; margin: 0; }
+.flashcard-answer .diagram { display: block; margin: 0; width: 100%; }
+.flashcard-controls { margin-top: 16px; }
+.flashcard-controls [data-flash-previous] { margin-left: auto; }
+.flashcard-controls[hidden] { display: none; }
+@media (max-width: 480px) {
+    .flashcard-toolbar > label { flex-basis: 100%; }
+    .flashcard-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .flashcard-controls [data-flash-reveal] { grid-column: 1 / -1; }
+    .flashcard-controls [data-flash-previous] { margin-left: 0; }
+}
+
 h1, h2, h3 { line-height: 1.08; overflow-wrap: break-word; }
 
 h1, h2 {

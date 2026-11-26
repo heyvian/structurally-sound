@@ -86,7 +86,7 @@ let showGraphAnswer;
 let graphDraft;
 let pageRoute = ['home', ''];
 let practiceResume;
-const languageRoutes = new Set(['home', 'practice', 'practice-menu', 'final', 'beam', 'truss', 'exam', 'weak', 'steel', 'sheet', 'sheet-all', 'quiz-truss-practice']);
+const languageRoutes = new Set(['home', 'practice', 'practice-menu', 'final', 'beam', 'truss', 'exam', 'weak', 'steel', 'sheet', 'sheet-all', 'quiz-truss-practice', 'flashcards']);
 const languageResumeKey = 'structural-language-resume';
 
 function saveProgress() {
@@ -154,8 +154,9 @@ function focusPage() {
     }
 }
 
-function show(html) {
+function show(html, hash = '') {
     closeWorkshopRoute();
+    if (hash || location.hash === '#flashcards') history.replaceState(null, '', hash || location.pathname + location.search);
     app.innerHTML = html;
     focusPage();
 }
@@ -177,6 +178,7 @@ function learningProgress() {
         <section class="panel resources" aria-labelledby="tools-title">
             <h2 id="tools-title">${t`Study references`}</h2>
             ${button(t('Practice questions'), 'practice-menu')}
+            ${button(theoryFlashcardTitle, 'flashcards')}
             ${button(t('Cumulative study guide'), 'sheet-all')}
             ${button(t('Steel profile table'), 'steel')}
         </section>
@@ -244,7 +246,8 @@ function practiceMenu() {
         <h1>${t`Practice questions`}</h1><p>${t`Choose a topic to try other problems. Worked methods are available beside the questions.`}</p>
         <div class="course-index">${unitOrder.map(i => button(units[i].title, 'practice', i)).join('')}
             ${button(beamDrawingTitle, 'unit', 'beam-draw')}${button(beamPracticeTitle, 'unit', 'beam-practice')}
-            ${button(trussTaPracticeTitle, 'quiz-truss-practice', 'vertical')}${button(trussPracticeTitle, 'quiz-truss-practice')}</div>
+            ${button(trussTaPracticeTitle, 'quiz-truss-practice', 'vertical')}${button(trussPracticeTitle, 'quiz-truss-practice')}
+            ${button(theoryFlashcardTitle, 'flashcards')}</div>
     </section>`);
 }
 
@@ -718,6 +721,7 @@ const actions = {
     'redo-workshop': value => redoWorkshop(workshopKey(value)),
     'review-workshop': value => { const [key, attempt] = value.split('/'); openWorkshop(workshopKey(key), Number(attempt)); },
     practice: value => startPractice(Number(value)), 'practice-menu': practiceMenu,
+    flashcards: openTheoryFlashcards,
     'quiz-truss-practice': value => {
         const vertical = value === 'vertical';
         begin(practiceCards(vertical ? trussTaPractice : trussQuizPractice), { mode: 'practice', unit: 8, title: vertical ? trussTaPracticeTitle : trussPracticeTitle });
@@ -804,13 +808,15 @@ document.getElementById('home').textContent = t('Home');
 document.querySelector('meta[name="description"]').content = t("Teaching you things you don't really need to know but here we are.");
 saveProgress();
 const linkedWorkshop = workshopLink();
-if (linkedWorkshop) {
+if (linkedWorkshop || location.hash === '#flashcards') {
     try { sessionStorage.removeItem(languageResumeKey); } catch { /* Storage may be unavailable. */ }
-    openWorkshop(...linkedWorkshop);
+    if (linkedWorkshop) openWorkshop(...linkedWorkshop);
+    else openTheoryFlashcards();
 } else if (!resumeLanguageRoute()) home();
 
 window.addEventListener('hashchange', () => {
     const match = workshopLink();
     if (match) openWorkshop(...match);
-    else if (activeWorkshop !== null) home();
+    else if (location.hash === '#flashcards') openTheoryFlashcards();
+    else if (activeWorkshop !== null || pageRoute[0] === 'flashcards') home();
 });
