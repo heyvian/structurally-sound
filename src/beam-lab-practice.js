@@ -2,6 +2,7 @@ const beamPracticeTitle = t('Independent beam practice');
 
 function beamLabNavigation(active) {
     const options = [
+        ['beam-draw', beamDrawingTitle],
         ['beam-a', beamLabTitles['beam-a']], ['beam-b', beamLabTitles['beam-b']],
         ['beam-practice', beamPracticeTitle], ['beam-ramp', beamLabTitles['beam-ramp']],
     ];

@@ -6,6 +6,12 @@ function stationLabel(stations, index) {
     return `x = ${numberText(station.x)} m${side}`;
 }
 
+function graphSegmentLabel(question, index) {
+    const start = question.stations[index].x;
+    const end = question.stations[index + 1].x;
+    return start === end ? t`Jump at x = ${numberText(start)} m` : `${numberText(start)}–${numberText(end)} m`;
+}
+
 const shapeLabels = {
     line: t('Straight'),
     positive: t('Parabola bows toward positive M'),
@@ -35,7 +41,8 @@ function snapOrdinate(value, scale, ordinates, target, unitsPerPixel) {
 }
 
 function graphX(question, position) { return 55 + 430 * position / question.b.L; }
-function graphY(question, scale, value) { return 133 + (question.kind === 'M' ? 1 : -1) * value / scale * 94; }
+function graphPositiveUp(question) { return question.kind !== 'M' || question.positiveMomentUp; }
+function graphY(question, scale, value) { return 133 + (graphPositiveUp(question) ? -1 : 1) * value / scale * 94; }
 
 function firstGraphError(question, input) {
     const scale = graphScale(question, []);
@@ -83,7 +90,10 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
     const positions = [...new Set(question.stations.map(station => station.x))];
     const shapeTargets = !showAnswer && selected === -1 && values.every(Number.isFinite) ? question.shapes.map((_, i) =>
         `<path class="graph-shape-hit" data-shape-hit="${i}" d="${learnerSegments[i]}"/>`).join('') : '';
-    return `<text x="55" y="15">${question.kind} (${units}) · + ${moment ? t('down') : t('up')}</text>
+    const solvedSegments = showAnswer ? question.answer.slice(1).map((_, i) => segmentPath(question.answer, i, question.shapes[i], true)) : [];
+    const solvedArea = showAnswer && question.givenOrdinates ? solvedSegments.map((path, i) =>
+        `${path}V${y(0)}H${x(question.stations[i].x)}Z`).join(' ') : '';
+    return `<text x="55" y="15">${question.kind} (${units}) · + ${graphPositiveUp(question) ? t('up') : t('down')}</text>
         ${grid}
         ${positions.map(position => `<path class="grid-line" d="M${x(position)} 28V230"/>`).join('')}
         ${positions.filter((position, i) => i === 0 || x(position) - x(positions[i - 1]) >= 31).map(position =>
@@ -95,7 +105,7 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
         ${values.map((value, i) => value === null ? '' :
             `<circle class="learner-ordinate" cx="${x(question.stations[i].x)}" cy="${y(value)}" r="4"/>`).join('')}
         ${shapeTargets}
-        ${showAnswer ? `<path class="solution-curve" d="${question.answer.slice(1).map((_, i) => segmentPath(question.answer, i, question.shapes[i], true)).join(' ')}"/>
+        ${showAnswer ? `${solvedArea ? `<path class="solution-area" d="${solvedArea}"/>` : ''}<path class="solution-curve" d="${solvedSegments.join(' ')}"/>
             <text x="485" y="258" text-anchor="end">${t`Dashed line · solution`}</text>` :
         `<g class="plot-preview" visibility="hidden" aria-hidden="true">
             <path class="preview-height"/><path class="preview-segment"/><circle r="6"/>
@@ -104,18 +114,17 @@ function graphCanvas(question, values, shapes, selected = -1, showAnswer = false
 }
 
 function graphMarkup(question) {
-    const sign = question.kind === 'M' ? t('Positive sagging goes below the baseline.') : t('Positive shear goes above the baseline.');
+    const given = question.givenOrdinates;
+    let sign = t('Positive shear goes above the baseline.');
+    let shapeInstruction = t('Dotted segments still need a shape. After placing all the points, tap a segment or its button to cycle through shapes, or use the dropdown. A positive bow curves downward from the straight line between the points.');
+    if (question.kind === 'M') sign = question.positiveMomentUp ? t('Positive moment goes above the baseline.') : t('Positive sagging goes below the baseline.');
+    if (given) shapeInstruction = question.positiveMomentUp ?
+        t('Tap each dotted segment or its button to choose straight or curved. A positive bow curves above the straight line between the points.') :
+        t('Tap each dotted segment or its button to choose straight or curved. A positive bow curves below the straight line between the points.');
     const scale = graphScale(question, []);
     const suggested = [...new Set([...question.answer, ...Array.from({ length: 9 }, (_, i) => scale * (i - 4) / 4)]
         .map(value => Number(fmt(value))))].sort((a, b) => a - b);
-    return `
-        <p id="graph-instructions">${sign} ${t('Choose a station, then tap its height on the graph, pick it from the list, or enter it exactly.')}</p>
-        <div class="graph-station-buttons" role="group" aria-label="${t`Stations to plot`}">${question.stations.map((_, i) =>
-            `<button type="button" data-plot-station="${i}" aria-pressed="false">${stationLabel(question.stations, i)}</button>`).join('')}</div>
-        <svg id="graph-plot" class="diagram graph" viewBox="0 0 520 263" role="img"
-            aria-label="${t`Your diagram sketch`}" aria-describedby="graph-instructions"></svg>
-        <p class="graph-placement" data-graph-placement></p>
-        <div class="graph-height-controls">
+    const heightControls = `<div class="graph-height-controls">
             <label>${t('Height options')}
                 <select data-graph-heights>
                     <option value="">${t('Choose a height')}</option>
@@ -128,22 +137,31 @@ function graphMarkup(question) {
             <button type="button" data-graph-adjust="-1" aria-label="${t('Decrease height by 0.1')}">−</button>
             <button type="button" data-graph-adjust="1" aria-label="${t('Increase height by 0.1')}">+</button>
             <button type="button" data-graph-place>${t('Place point')}</button>
-        </div>
+        </div>`;
+    return `
+        <p id="graph-instructions">${sign} ${given ? t('Select a station, then tap its given height on the graph.') :
+            t('Choose a station, then tap its height on the graph, pick it from the list, or enter it exactly.')}</p>
+        <div class="graph-station-buttons${given ? ' graph-given-stations' : ''}" role="group" aria-label="${t`Stations to plot`}">${question.stations.map((_, i) =>
+            `<button type="button" data-plot-station="${i}" aria-pressed="false">${stationLabel(question.stations, i)}</button>`).join('')}</div>
+        <svg id="graph-plot" class="diagram graph" viewBox="0 0 520 263" role="img"
+            aria-label="${t`Your diagram sketch`}" aria-describedby="graph-instructions"></svg>
+        <p class="graph-placement" data-graph-placement></p>
+        ${given ? `<details class="graph-exact-entry"><summary>${t('Enter a height exactly')}</summary>${heightControls}</details>` : heightControls}
         <button class="graph-clear" type="button" data-graph-clear>${t('Clear values')}</button>
         <p class="graph-announcement" role="status" data-graph-announcement></p>
-        <fieldset class="diagram-fields"><legend>${question.kind === 'M' ? t('Moment ordinates · kN·m') : t('Shear ordinates · kN')}</legend>
+        ${given ? '' : `<fieldset class="diagram-fields"><legend>${question.kind === 'M' ? t('Moment ordinates · kN·m') : t('Shear ordinates · kN')}</legend>
             <div class="station-grid">${question.stations.map((_, i) =>
                 `<label>${stationLabel(question.stations, i)}<input class="study-number" type="text" inputmode="decimal" data-station="${i}"></label>`).join('')}</div>
-        </fieldset>
+        </fieldset>`}
         ${question.shapes.length ? `<fieldset class="diagram-fields"><legend>${t`Segment geometry`}</legend>
-            <p>${t('Dotted segments still need a shape. After placing all the points, tap a segment or its button to cycle through shapes, or use the dropdown. A positive bow curves downward from the straight line between the points.')}</p>
+            <p>${shapeInstruction}</p>
             <div class="graph-station-buttons" role="group" aria-label="${t`Cycle segment shapes`}">
             ${question.shapes.map((_, i) => `<button type="button" data-shape-cycle="${i}"></button>`).join('')}</div>
-            <div class="station-grid">
-            ${question.shapes.map((_, i) => `<label>${numberText(question.stations[i].x)}–${numberText(question.stations[i + 1].x)} m
+            ${given ? '' : `<div class="station-grid">
+            ${question.shapes.map((_, i) => `<label>${graphSegmentLabel(question, i)}
                 <select data-segment="${i}"><option value="">${t`Choose a shape`}</option>
                 ${Object.entries(shapeLabels).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
-                </select></label>`).join('')}</div></fieldset>` : ''}`;
+                </select></label>`).join('')}</div>`}</fieldset>` : ''}`;
 }
 
 function bindGraph(question, onChange, { root = document, draft, onDraft } = {}) {
@@ -184,14 +202,20 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         stations.forEach((button, i) => {
             button.setAttribute('aria-pressed', selected === i);
             const value = answer.values[i];
-            button.textContent = `${stationLabel(question.stations, i)}${value === null ? '' : ` · ${numberText(value)} ${units}`}`;
+            const label = stationLabel(question.stations, i);
+            if (question.givenOrdinates) {
+                const given = question.answer[i];
+                button.toggleAttribute('data-station-placed', value !== null);
+                button.innerHTML = `<span>${label}</span><strong>${given > 0 ? '+' : ''}${numberText(given)} ${units}</strong>${value === null ? '' : '<span class="graph-placed-mark" aria-hidden="true">●</span>'}`;
+                button.title = value === null ? '' : t`Plotted at ${numberText(value)} ${units}.`;
+            } else button.textContent = `${label}${value === null ? '' : ` · ${numberText(value)} ${units}`}`;
         });
         cycles.forEach((button, i) => {
-            const range = `${numberText(question.stations[i].x)}–${numberText(question.stations[i + 1].x)} m`;
+            const range = graphSegmentLabel(question, i);
             const shape = answer.shapes[i];
             button.textContent = `${range} · ${shapeLabels[shape] ?? t('Choose shape')}`;
             button.toggleAttribute('data-shape-pending', !shape);
-            segments[i].toggleAttribute('data-shape-pending', !shape);
+            segments[i]?.toggleAttribute('data-shape-pending', !shape);
         });
         clear.disabled = answer.values.every(value => value === null) && answer.shapes.every(shape => shape === null);
         height.disabled = showAnswer || selected < 0;
@@ -231,7 +255,7 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
     const shapeKeys = Object.keys(shapeLabels);
     const cycleShape = i => {
         answer.shapes[i] = shapeKeys[(shapeKeys.indexOf(answer.shapes[i]) + 1) % shapeKeys.length];
-        segments[i].value = answer.shapes[i];
+        if (segments[i]) segments[i].value = answer.shapes[i];
         selected = firstEmpty();
         announcement.textContent = t`Segment from ${stationLabel(question.stations, i)}: ${shapeLabels[answer.shapes[i]]}.`;
         update();
@@ -258,7 +282,7 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         const point = svgPoint.matrixTransform(matrix.inverse());
         if (point.x < 44 || point.x > 495 || point.y < 32 || point.y > 234) return null;
         const scale = graphScale(question, answer.values);
-        const value = (point.y - 133) * scale / ((question.kind === 'M' ? 1 : -1) * 94);
+        const value = (point.y - 133) * scale / ((graphPositiveUp(question) ? -1 : 1) * 94);
         const unitsPerPixel = scale / (94 * Math.hypot(matrix.c, matrix.d));
         const target = Number(fmt(question.answer[selected]));
         return { point, scale, value: snapOrdinate(value, scale, ordinates, target, unitsPerPixel) };
@@ -301,7 +325,7 @@ function bindGraph(question, onChange, { root = document, draft, onDraft } = {})
         if (selected < 0 || !Number.isFinite(value)) return;
         announcement.textContent = t`${stationLabel(question.stations, selected)} placed at ${numberText(value)} ${units}.`;
         answer.values[selected] = value;
-        inputs[selected].value = studyInputText(value);
+        if (inputs[selected]) inputs[selected].value = studyInputText(value);
         answer.sketched[selected] = sketched;
         selected = firstEmpty();
         update();

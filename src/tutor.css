@@ -508,6 +508,7 @@
     font-size: 14px;
 }
 .beam-lab-nav [aria-current] { background: var(--blue); color: var(--white); }
+.beam-lab-nav a[href="#workshop-beam-draw"] { border-width: 2px; }
 .beam-lab-phase { margin: 2px 0 9px; color: var(--blue); font: 700 13px/1.4 var(--mono); }
 .beam-lab-explore {
     display: grid;
@@ -547,6 +548,34 @@
 .beam-lab-answers { margin: 10px 0 0; padding: 10px; background: var(--ice); }
 .beam-lab-answers div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 15px; }
 .beam-lab-answers dd { margin: 0; font-weight: 700; }
+
+.drill-toolbar, .drill-modes { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.drill-toolbar { justify-content: space-between; margin-bottom: 13px; }
+.beam-drawing-drill .tutor-session-heading { margin-bottom: 16px; }
+.drill-modes [aria-pressed="true"] { background: var(--blue); color: var(--white); border-color: var(--blue); }
+.drill-problem { margin: 0; }
+.drill-problem #graph-plot { width: 100%; max-width: none; }
+.beam-drawing-drill .solution-area { fill: #557faf30; }
+.drill-reactions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.drill-reactions > div { flex: 1 0 auto; display: flex; justify-content: space-between; gap: 8px; padding: 5px 7px; border: 1px solid #a5b6ce; }
+.drill-reactions dd { margin: 0; font-weight: 700; }
+.graph-given-stations { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr)); }
+.graph-given-stations button { position: relative; display: grid; align-content: center; gap: 3px; text-align: left; min-width: 0; }
+.graph-given-stations strong { font-size: 1.15em; color: #233f92; }
+.graph-given-stations [data-station-placed]:not([aria-pressed="true"]) { background: #e6eff3; }
+.graph-placed-mark { position: absolute; right: 7px; bottom: 5px; color: #175e59; }
+.graph-exact-entry, .drill-worked, .drill-shear-reference { margin: 8px 0; }
+.drill-problem .graph-clear { margin-top: 5px; }
+.drill-problem [aria-invalid="true"] { border-color: var(--red); outline: 2px solid var(--red); }
+.drill-check { margin-top: 12px; }
+.drill-feedback { margin: 0; }
+.drill-feedback[data-result] { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--red); background: #f9ede4; }
+.drill-feedback[data-result="correct"] { border-color: #17615e; background: #e0efea; }
+@media (max-width: 420px) {
+    .graph-given-stations { grid-template-columns: repeat(auto-fit, minmax(min(100%, 5rem), 1fr)); }
+    .graph-given-stations button { padding: 5px 6px; }
+    .graph-given-stations strong { font-size: 1em; }
+}
 
 .section-piece { fill: #dce7f3; stroke: var(--ink); stroke-width: 1.8; }
 .section-piece-1 { fill: #eadbd1; }

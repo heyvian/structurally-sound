@@ -103,7 +103,7 @@ function bucklingComparison() {
 }
 
 let beamFigureNumber = 0;
-function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot, live, rollerAtA = false } = {}) {
+function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot, live, rollerAtA = false, showReactionValues = true } = {}) {
     const { L, a, b, points, udls, couples = [] } = beam;
     const id = `beam-${beamFigureNumber++}`;
     const x = position => 48 + position / L * 424;
@@ -160,7 +160,7 @@ function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot
                 const position = i === 2 || i === 4 ? b : a;
                 const horizontal = i === 0 || i === 4;
                 return `<g ${live === i ? 'data-draft-force' : ''}>${forceGlyph({ x: x(position), y, dx: horizontal ? 1 : 0,
-                    dy: horizontal ? 0 : -1, name, unit: 'kN', labelSide: x(position) > 400 ? 'left' : 'right' }, values[i])}</g>`;
+                    dy: horizontal ? 0 : -1, name, unit: 'kN', labelSide: x(position) > 400 ? 'left' : 'right', showValue: showReactionValues }, values[i])}</g>`;
             }
             return `<path d="${path}" ${reactionArrow}/><text x="${tx}" y="${ty}" fill="#155d68" font-size="12">${name}</text>`;
         }).join('')}

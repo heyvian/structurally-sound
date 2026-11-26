@@ -4,7 +4,8 @@ function readWorkshops() {
     try {
         const saved = JSON.parse(localStorage.getItem(workshopStorageKey));
         if (saved?.runs && typeof saved.runs === 'object' && !Array.isArray(saved.runs)) {
-            return { runs: saved.runs, archives: saved.archives || {}, recent: saved.recent, signals: saved.signals || {}, beamPractice: saved.beamPractice };
+            return { runs: saved.runs, archives: saved.archives || {}, recent: saved.recent, signals: saved.signals || {},
+                beamPractice: saved.beamPractice, beamDrawing: saved.beamDrawing };
         }
     } catch {
         // A workshop can still run when browser storage is unavailable.
@@ -382,6 +383,7 @@ function renderTutor(index, focus = 'title') {
 
 function openWorkshop(index, review = null) {
     if (index === 'beam-practice') { openBeamPractice(); return; }
+    if (index === 'beam-draw') { openBeamDrawingDrill(); return; }
     if (!workshops[index] && !Object.hasOwn(beamLabTitles, index) && !Object.hasOwn(trussWorkshopTitles, index)) return;
     session = undefined;
     activeWorkshop = index;
@@ -402,10 +404,11 @@ function redoWorkshop(index) {
 }
 
 function workshopLink() {
-    const match = /^#workshop-(\d+|beam-a|beam-b|beam-ramp|beam-practice|truss-quiz|truss-ta)(?:\/attempt-(\d+))?$/.exec(location.hash);
+    const match = /^#workshop-(\d+|beam-a|beam-b|beam-ramp|beam-practice|beam-draw|truss-quiz|truss-ta)(?:\/attempt-(\d+))?$/.exec(location.hash);
     if (!match) return null;
     const index = workshopKey(match[1]);
-    return workshops[index] || Object.hasOwn(beamLabTitles, index) || index === 'beam-practice' || Object.hasOwn(trussWorkshopTitles, index) ? [index, match[2] ? Number(match[2]) : null] : null;
+    return workshops[index] || Object.hasOwn(beamLabTitles, index) || index === 'beam-practice' || index === 'beam-draw' ||
+        Object.hasOwn(trussWorkshopTitles, index) ? [index, match[2] ? Number(match[2]) : null] : null;
 }
 
 const workshopKey = value => /^\d+$/.test(value) ? Number(value) : value;

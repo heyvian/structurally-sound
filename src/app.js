@@ -243,7 +243,8 @@ function practiceMenu() {
     show(`${button(t('‹ Learning path'), 'home')}<section class="lesson">
         <h1>${t`Practice questions`}</h1><p>${t`Choose a topic to try other problems. Worked methods are available beside the questions.`}</p>
         <div class="course-index">${unitOrder.map(i => button(units[i].title, 'practice', i)).join('')}
-            ${button(beamPracticeTitle, 'unit', 'beam-practice')}${button(trussTaPracticeTitle, 'quiz-truss-practice', 'vertical')}${button(trussPracticeTitle, 'quiz-truss-practice')}</div>
+            ${button(beamDrawingTitle, 'unit', 'beam-draw')}${button(beamPracticeTitle, 'unit', 'beam-practice')}
+            ${button(trussTaPracticeTitle, 'quiz-truss-practice', 'vertical')}${button(trussPracticeTitle, 'quiz-truss-practice')}</div>
     </section>`);
 }
 

@@ -1,13 +1,13 @@
 // Arrow lengths are schematic. Direction follows the learner's sign, while the
 // label carries the actual value and unit.
-function forceGlyph({ x, y, dx, dy, name, unit = '', length = 43, labelSide }, value, negativeDraft = false) {
+function forceGlyph({ x, y, dx, dy, name, unit = '', length = 43, labelSide, showValue = true }, value, negativeDraft = false) {
     const negative = value < 0 || negativeDraft;
     const norm = Math.hypot(dx, dy);
     const u = dx / norm * (negative ? -1 : 1);
     const v = dy / norm * (negative ? -1 : 1);
     const tipX = x + u * length, tipY = y + v * length;
     const wing = (side) => `${tipX - 9 * u - side * 4 * v},${tipY - 9 * v + side * 4 * u}`;
-    const label = Number.isFinite(value) ? `${name} = ${value > 0 ? '+' : ''}${numberText(value)}${unit ? ` ${unit}` : ''}` : name;
+    const label = showValue && Number.isFinite(value) ? `${name} = ${value > 0 ? '+' : ''}${numberText(value)}${unit ? ` ${unit}` : ''}` : name;
     const path = value === 0 ? `<circle cx="${x}" cy="${y}" r="5"/>` :
         `<path d="M${x} ${y}L${tipX} ${tipY}"/><polygon points="${tipX},${tipY} ${wing(1)} ${wing(-1)}"/>`;
     const textX = labelSide ? x + (labelSide === 'left' ? -8 : 8) : tipX + (u > .25 ? 3 : u < -.25 ? -3 : 8);
