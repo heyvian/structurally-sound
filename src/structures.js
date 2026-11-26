@@ -1,15 +1,19 @@
 const fmt = value => Number(value.toFixed(3)).toString();
 
-// Planar pin and roller, vertical point loads and piecewise uniform loads.
-// A positive load magnitude acts down. Positive moment is sagging.
+// Planar pin and roller, vertical point loads, uniform loads, and point couples.
+// A positive load acts down. A positive applied couple is counterclockwise.
+// Positive internal moment is sagging.
 function analyze(beam) {
+    const couples = new Map();
+    for (const { x, m } of beam.couples ?? []) couples.set(x, (couples.get(x) ?? 0) + m);
     const forces = beam.points.concat(beam.udls.map(({ s, e, w }) => ({
         x: (s + e) / 2,
         p: w * (e - s),
     })));
     const total = forces.reduce((sum, force) => sum + force.p, 0);
     const momentAboutA = forces.reduce((sum, { p, x }) => sum + p * (x - beam.a), 0);
-    const RB = momentAboutA / (beam.b - beam.a);
+    const appliedMoment = [...couples.values()].reduce((sum, m) => sum + m, 0);
+    const RB = (momentAboutA - appliedMoment) / (beam.b - beam.a);
     const RA = total - RB;
     const jumps = [
         { x: beam.a, p: RA },
@@ -19,11 +23,12 @@ function analyze(beam) {
     const V = (x, right) => jumps.reduce((sum, jump) =>
         sum + (jump.x < x || (right && jump.x === x) ? jump.p : 0), 0)
         - beam.udls.reduce((sum, { s, e, w }) => sum + w * Math.max(0, Math.min(x, e) - s), 0);
-    const M = x => jumps.reduce((sum, jump) => sum + jump.p * Math.max(0, x - jump.x), 0)
+    const M = (x, right = true) => jumps.reduce((sum, jump) => sum + jump.p * Math.max(0, x - jump.x), 0)
         - beam.udls.reduce((sum, { s, e, w }) =>
-            sum + w * (Math.max(0, x - s) ** 2 - Math.max(0, x - e) ** 2) / 2, 0);
+            sum + w * (Math.max(0, x - s) ** 2 - Math.max(0, x - e) ** 2) / 2, 0)
+        - [...couples].reduce((sum, [station, m]) => sum + (station < x || (right && station === x) ? m : 0), 0);
     const breaks = [...new Set([
-        0, beam.L, ...jumps.map(({ x }) => x), ...beam.udls.flatMap(({ s, e }) => [s, e]),
+        0, beam.L, ...jumps.map(({ x }) => x), ...beam.udls.flatMap(({ s, e }) => [s, e]), ...couples.keys(),
     ])].sort((a, b) => a - b);
     const roots = [];
     for (let i = 0; i < breaks.length - 1; i++) {
@@ -39,7 +44,8 @@ function analyze(beam) {
         const right = { x, v: V(x, true) };
         return Math.abs(left.v - right.v) < 1e-8 ? [left] : [left, right];
     });
-    const ms = [...breaks, ...roots].sort((a, b) => a - b).map(x => ({ x, v: M(x) }));
+    const ms = [...breaks, ...roots].sort((a, b) => a - b).flatMap(x => couples.get(x) ?
+        [{ x, v: M(x, false) }, { x, v: M(x) }] : [{ x, v: M(x) }]);
     return {
         RA, RB, forces, vs, ms, M, V,
         Vmax: Math.max(...vs.map(({ v }) => Math.abs(v))),
@@ -53,6 +59,7 @@ function graphQuestion(beam, kind) {
     const stations = moment ? result.ms : result.vs;
     const shapes = moment ? stations.slice(1).map((right, i) => {
         const left = stations[i];
+        if (right.x === left.x) return 'line';
         const midpoint = (left.x + right.x) / 2;
         const offset = result.M(midpoint) - (left.v + right.v) / 2;
         if (Math.abs(offset) < 1e-8) return 'line';

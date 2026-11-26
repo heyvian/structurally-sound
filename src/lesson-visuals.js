@@ -94,6 +94,11 @@ function progressiveLessonDrawing(workshop, run, i) {
     const turn = workshop.turns[i];
     const record = run.records[i] || {};
     if (turn.trussQuiz) return trussQuizDrawing(turn.trussQuiz, trussQuizLearned(workshop, run, i));
+    if (turn.taDrawing) {
+        const drawing = turn.taDrawing(record);
+        return { title: t('Drawing'), ...drawing };
+    }
+
     if (turn.section) return sectionLessonDrawing(workshop, run, i);
     if (workshop.beam) return beamLabDrawing(workshop, run, i);
     if (turn.shearSegment) return workshopFigure(lessonShearSegment(turn, record.status, diagramDraft(record.draft, record.draftLocale).value));

@@ -9,7 +9,19 @@ const repeatVersions = new Map();
 const shearVersions = new Map();
 const sectionVersions = new Map();
 
+const taCourseVersions = new WeakMap();
+const taCourseTopics = new Set([1, 3, 4, 6, 9, 10]);
+
 function workshopVersion(index, attempt = 1, run) {
+    const base = coreWorkshopVersion(index, attempt, run);
+    if (!taCourseTopics.has(index) || (run?.finished && !(run.cursor > base.turns.length))) return base;
+    if (!taCourseVersions.has(base)) {
+        taCourseVersions.set(base, { ...base, index, turns: [...base.turns, ...taCourseTurns(index, attempt, base)] });
+    }
+    return taCourseVersions.get(base);
+}
+
+function coreWorkshopVersion(index, attempt, run) {
     if (Object.hasOwn(trussWorkshopTitles, index)) {
         const key = `${index}/${attempt}`;
         if (!repeatVersions.has(key)) repeatVersions.set(key, index === 'truss-ta' ? trussTaWorkshop(attempt) : trussQuizWorkshop(attempt));

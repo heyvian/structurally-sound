@@ -47,7 +47,7 @@ function workshopRun(i) {
         const bridge = updated.turns.findIndex(turn => turn.section?.concept);
         let previous = 0;
         const records = updated.turns.map(turn => turn.section?.concept ? undefined : saved.records[previous++]);
-        const progress = saved.records.filter(record => record?.status).length / previous;
+        const progress = saved.records.filter(record => record?.status).length / sectionLessonVersion(attemptNumber(saved), false).turns.length;
         const sectionProgressFloor = Math.max(saved.sectionProgressFloor ?? 0, progress);
         return workshopProgress.runs[i] = { ...saved, records, cursor: Math.min(saved.cursor, bridge), sectionVisual: true, sectionProgressFloor };
     }
@@ -222,7 +222,7 @@ function tutorDrawing(workshop, run, i, interactive, current) {
     let pastSketch = null;
     if (current && workshop.repeat && turn.type === 'sketch' && turn.kind === 'M') {
         pastSketch = workshop.turns.slice(0, i).findLast((previous, j) => previous.type === 'sketch' && previous.kind === 'V' && run.records[j]?.status);
-    } else if (current && !turn.shearSegment && (workshop.index === 4 || workshop === workshops[4])) {
+    } else if (current && !turn.taDrawing && !turn.shearSegment && (workshop.index === 4 || workshop === workshops[4])) {
         const from = i > 9 ? 10 : 3;
         pastSketch = workshop.turns.slice(from, i).findLast((previous, j) => previous.type === 'sketch' && run.records[from + j]?.status);
     }
@@ -230,10 +230,10 @@ function tutorDrawing(workshop, run, i, interactive, current) {
         <div class="tutor-drawing-title"><span>${drawing.title ?? (turn.drawing ? t('Drawing') : workshop.drawing.caption)}</span>${hotspots ? `<span>${t("Tap a point")}</span>` : ''}</div>
         ${turn.type === 'fbd' && !record?.status ? `<figure class="lesson-given"><figcaption>${t('Given structure')}</figcaption>${fbdDrawing(turn, null, false)}</figure>` : ''}
         <div class="tutor-drawing-frame" ${current ? 'data-lesson-live' : ''}>${drawing.markup}${hotspots}${marker}</div>
-        ${current || turn.section || turn.trussQuiz ? drawing.tools || '' : ''}
+        ${current || turn.section || turn.trussQuiz || turn.taDrawing ? drawing.tools || '' : ''}
         ${drawing.label ? `<p>${drawing.label}</p>` : ''}
         ${workshop.sectionLesson ? '' : lessonValues(workshop, run, i, current)}
-        ${current && (drawing.progress || pastSketch) ? `<details class="lesson-drawing-progress" open><summary>${t('Drawing so far')}</summary>
+        ${(current || turn.taDrawing) && (drawing.progress || pastSketch) ? `<details class="lesson-drawing-progress" open><summary>${t('Drawing so far')}</summary>
             ${drawing.progress || graphSolution(pastSketch)}</details>` : ''}
     </div>`;
 }
@@ -323,7 +323,8 @@ function renderTutor(index, focus = 'title') {
     const attempt = attemptNumber(run);
     const workshop = workshopVersion(index, attempt, run);
     const complete = run.cursor === workshop.turns.length;
-    const redoLabel = index === 6 && !workshop.sectionVisual ? t('Start the expanded lesson') : t('Redo with new problems');
+    const expanded = workshop.turns.length < workshopVersion(index, attempt).turns.length;
+    const redoLabel = expanded ? t('Start the expanded lesson') : t('Redo with new problems');
     const topic = workshop.beam ? 4 : workshop.topic ?? index;
     const title = units[topic].title;
     const following = unitOrder[unitOrder.indexOf(topic) + 1];

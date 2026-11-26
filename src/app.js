@@ -74,9 +74,10 @@ const trussExam = trussQs.map((question, j) => ({
 const diagramExercises = Object.keys(fbdCases).map(kind => ({ ...fbdQuestion(kind), key: `fbd-${kind}`, topic: units[2].title, topicIndex: 2 }));
 const trussQuizPractice = makeTrussQuizPractice();
 const trussTaPractice = makeTrussTaPractice();
+const taCoursePractice = makeCourseTaPractice();
 const questionBank = new Map([
     ...unitQuestions.flat(), ...calculationCards, ...guidedQuestions.flat(),
-    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam, ...diagramExercises, ...trussQuizPractice, ...trussTaPractice,
+    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam, ...diagramExercises, ...trussQuizPractice, ...trussTaPractice, ...taCoursePractice,
 ].map(question => [question.key, question]));
 
 let session;
@@ -248,7 +249,7 @@ function practiceMenu() {
 
 function startPractice(i) {
     if (!unitQuestions[i]) return;
-    const questions = [calculationCards[i], ...guidedQuestions[i], ...(i === 2 ? diagramExercises : []), ...unitQuestions[i]];
+    const questions = [calculationCards[i], ...guidedQuestions[i], ...(i === 2 ? diagramExercises : []), ...unitQuestions[i], ...taCoursePractice.filter(question => question.topicIndex === i)];
     begin(practiceCards(questions), { mode: 'practice', unit: i, title: t`Practice: ${units[i].title}` });
 }
 

@@ -558,6 +558,7 @@
 .section-symmetry, .section-local-axis { stroke: #355872; stroke-dasharray: 3 3; }
 .section-symmetry { opacity: .72; }
 .section-combined-axis { stroke: #2945a7; stroke-width: 1.6; stroke-dasharray: 6 3; }
+.section-axis-focus { stroke-width: 2.8; }
 .section-draft-axis { stroke: #a34b21; stroke-width: 1.6; stroke-dasharray: 2 4; }
 .section-seam { stroke: #fffefa; stroke-width: 1.7; stroke-dasharray: 3 3; }
 .section-axis-text { paint-order: stroke; stroke: #f3f6f9; stroke-width: 3; }
@@ -569,6 +570,9 @@
 .section-ledger td { text-align: right; font-variant-numeric: tabular-nums; }
 .section-ledger > thead th:not(:first-child) { text-align: right; }
 .section-ledger small { display: block; font-weight: normal; }
+.ta-inertia-ledger { min-width: 290px; }
+.ta-inertia-ledger th, .ta-inertia-ledger td { padding: 4px 3px; }
+.ta-inertia-ledger td { white-space: nowrap; }
 .section-ledger-active { background: #f4dfc2; }
 .section-totals { display: flex; flex-wrap: wrap; gap: 3px 12px; margin: 5px 0 0; color: var(--blue); font: 700 12px/1.4 var(--mono); }
 .section-totals:empty { display: none; }

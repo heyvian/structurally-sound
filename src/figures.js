@@ -104,7 +104,7 @@ function bucklingComparison() {
 
 let beamFigureNumber = 0;
 function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot, live, rollerAtA = false } = {}) {
-    const { L, a, b, points, udls } = beam;
+    const { L, a, b, points, udls, couples = [] } = beam;
     const id = `beam-${beamFigureNumber++}`;
     const x = position => 48 + position / L * 424;
     const y = 82;
@@ -112,6 +112,7 @@ function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot
         rollerAtA ? t`Span ${L} metres with roller A at ${a} and roller B at ${b}` : t`Span ${L} metres, pin A at ${a}, roller B at ${b}`,
         ...points.map(p => t`${p.p} kilonewtons downward at ${p.x} metres`),
         ...udls.map(w => t`${w.w} kilonewtons per metre downward from ${w.s} to ${w.e} metres`),
+        ...couples.map(({ x: station, m }) => t`${numberText(m)} kN·m applied couple at ${numberText(station)} m, counterclockwise positive`),
     ].join('. ');
     const supports = [a, b].map((position, i) => `
         ${isolated ? `<circle cx="${x(position)}" cy="${y}" r="3" fill="#23343a"/>` : `<path d="M${x(position)} ${y + 1}l-12 17h24Z" fill="#fff9e8" stroke="#23343a" stroke-width="1.6"/>
@@ -119,7 +120,7 @@ function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot
                 fill="white" stroke="#23343a"/>`).join('')
             : `<rect x="${x(position) - 14}" y="${y + 18}" width="28" height="7" fill="url(#${id}-ground)"/>`}`}
         <text x="${x(position)}" y="${y + 37}" text-anchor="middle" font-size="11">${'AB'[i]}</text>`).join('');
-    const positions = [...new Set([0, a, b, L, ...points.map(p => p.x), ...udls.flatMap(w => [w.s, w.e])])]
+    const positions = [...new Set([0, a, b, L, ...points.map(p => p.x), ...udls.flatMap(w => [w.s, w.e]), ...couples.map(c => c.x)])]
         .sort((left, right) => left - right);
     const loadArrow = `stroke="#a7462e" stroke-width="1.9" marker-end="url(#${id}-load)"`;
     const reactionArrow = `stroke="#155d68" stroke-width="2" fill="none" marker-end="url(#${id}-reaction)"`;
@@ -152,6 +153,7 @@ function beamFigure(beam, reactions = [], { isolated = false, values = {}, pivot
             <path d="M${x(s)} 41H${x(e)}" stroke="#a7462e" stroke-width="1.8"/>
             ${Array.from({ length: 9 }, (_, i) => `<path d="M${x(s + (e - s) * i / 8)} 41V${y - 4}" ${loadArrow}/>`).join('')}
             <text x="${x((s + e) / 2)}" y="35" text-anchor="middle" fill="#a33a25" font-size="12">${w} kN/m</text>`).join('')}
+        ${couples.map(({ x: position, m }) => momentGlyph(x(position), y - 5, 'C', m)).join('')}
         ${reactions.map(i => {
             const [path, tx, ty, name] = drafts[i];
             if (Object.hasOwn(values, i) || live === i) {

@@ -1,4 +1,4 @@
-function sectionPlate(model, kind, values = {}, { part: active, dimension, symmetry } = {}, draft) {
+function sectionPlate(model, kind, values = {}, { part: active, dimension, symmetry, inertiaAxis, offsetKnown } = {}, draft) {
     const n = numberText;
     const scale = Math.min(162 / model.width, 148 / model.depth);
     const left = 143, base = 199;
@@ -18,9 +18,9 @@ function sectionPlate(model, kind, values = {}, { part: active, dimension, symme
     const yAxis = symmetry || kind === 'i' ? `<path class="section-symmetry" d="M${left - 7} ${y(model.depth / 2)}H${right + 7}"/>` : '';
     const horizontalMidpoint = Number.isFinite(values.cy) ? y(values.cy) : null;
     const verticalMidpoint = Number.isFinite(values.cx) ? x(values.cx) : kind === 'tee' ? x(model.cx) : null;
-    const axisMarkup = `${Number.isFinite(values.cx) ? `<path class="section-combined-axis" d="M${verticalMidpoint} ${top - 6}V${base + 19}"/>
+    const axisMarkup = `${Number.isFinite(values.cx) ? `<path class="section-combined-axis${inertiaAxis === 'y' ? ' section-axis-focus' : ''}" d="M${verticalMidpoint} ${top - 6}V${base + 19}"/>
         <text class="section-axis-text" x="${verticalMidpoint + 5}" y="${base + 18}">x̄ = ${n(values.cx)} mm</text>` : ''}
-        ${horizontalMidpoint === null ? '' : `<path class="section-combined-axis" d="M${left - 20} ${horizontalMidpoint}H${right + 50}"/>
+        ${horizontalMidpoint === null ? '' : `<path class="section-combined-axis${inertiaAxis === 'x' ? ' section-axis-focus' : ''}" d="M${left - 20} ${horizontalMidpoint}H${right + 50}"/>
             <text class="section-axis-text" x="${right + 54}" y="${horizontalMidpoint + 4}">ȳ = ${n(values.cy)} mm</text>`}
         ${verticalMidpoint === null || horizontalMidpoint === null ? '' :
             `<circle class="section-centroid-mark" cx="${verticalMidpoint}" cy="${horizontalMidpoint}" r="5"/>`}`;
@@ -50,7 +50,12 @@ function sectionPlate(model, kind, values = {}, { part: active, dimension, symme
         dimensions.push(dim(left, top - 9, x(leg.width), top - 9, `${n(leg.width)} mm`),
             dim(right + 65, y(foot.depth), right + 65, base, `${n(foot.depth)} mm`));
     }
-    const measurement = active !== undefined && dimension === 'y' && focus ? dim(left - 26, y(focus.cy), left - 26, base,
+    const leg = model.parts[0];
+    const gap = inertiaAxis === 'x' ? Math.abs(leg.cy - model.cy) : Math.abs(leg.cx - model.cx);
+    const gapLabel = offsetKnown ? `d = ${n(gap)} mm` : 'd';
+    const measurement = inertiaAxis === 'x' ? dim(left - 35, y(leg.cy), left - 35, y(model.cy), gapLabel) :
+        inertiaAxis === 'y' ? dim(x(leg.cx), top - 22, x(model.cx), top - 22, gapLabel) :
+        active !== undefined && dimension === 'y' && focus ? dim(left - 26, y(focus.cy), left - 26, base,
         Number.isFinite(values['y' + active]) ? `y${'₁₂'[active]} = ${n(focus.cy)} mm` : `y${'₁₂'[active]}`) :
         dimension === 'offset' && focus && horizontalMidpoint !== null ? dim(left - 26, y(values.cy), left - 26, y(focus.cy),
             Number.isFinite(values['d' + active]) ? `d = ${n(focus.offset)} mm` : 'd') :
@@ -128,7 +133,11 @@ function sectionLessonDrawing(workshop, run, index) {
 }
 
 function sectionPracticeFigure(question, solved) {
-    const { model, kind } = question.sectionCase;
+    const { model, kind, inertia } = question.sectionCase;
+    if (inertia) {
+        const drawing = lInertiaDrawing(model, inertia, 1, solved);
+        return drawing.markup + drawing.tools;
+    }
     const values = solved ? { cx: model.cx, cy: model.cy } : {};
     if (solved && kind === 'angle') model.parts.forEach((part, i) => {
         values['x' + i] = part.cx;
