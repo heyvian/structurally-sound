@@ -1,7 +1,11 @@
 const flashcardStorageKey = 'structural-theory-flashcards-v1';
 const theoryCards = new Map(unitOrder.flatMap(topic => theoryDecks[topic].map(([id, prompt, answer, drawing]) =>
     [id, { id, topic, prompt, answer, drawing }])));
-const flashcardTopics = ['all', ...unitOrder.map(String), 'review'];
+const flashcardTopics = ['all', 'final', 'quick', ...unitOrder.map(String), 'review'];
+
+function nextFlashcardSeed(seed) {
+    return seed + 1 + Math.floor(Math.random() * 1000);
+}
 
 function readFlashcardProgress() {
     let saved;
@@ -10,13 +14,15 @@ function readFlashcardProgress() {
     } catch {
         // The deck also works without browser storage.
     }
-    const validIds = ids => Array.isArray(ids) ? [...new Set(ids.filter(id => theoryCards.has(id)))] : [];
+    const validId = id => theoryCards.has(id) || quickDecisionIds.includes(id);
+    const validIds = ids => Array.isArray(ids) ? [...new Set(ids.filter(validId))] : [];
     return {
         topic: flashcardTopics.includes(saved?.topic) ? saved.topic : 'all',
         order: validIds(saved?.order),
-        active: theoryCards.has(saved?.active) ? saved.active : null,
+        active: validId(saved?.active) ? saved.active : null,
         revealed: saved?.revealed === true,
         review: validIds(saved?.review),
+        seed: Number.isSafeInteger(saved?.seed) && saved.seed > 0 ? saved.seed : Math.floor(Math.random() * 100000) + 1,
     };
 }
 
@@ -30,6 +36,8 @@ function saveFlashcardProgress(progress) {
 
 function flashcardsInTopic({ topic, review }) {
     if (topic === 'all') return [...theoryCards.keys()];
+    if (topic === 'final') return finalTheoryCards;
+    if (topic === 'quick') return quickDecisionIds;
     if (topic === 'review') return review;
     return theoryDecks[topic].map(([id]) => id);
 }
@@ -47,10 +55,21 @@ function flashcardWords(text) {
     return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase(locale).match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
-function openTheoryFlashcards() {
+function openTheoryFlashcards(deck) {
     session = undefined;
     pageRoute = ['flashcards', ''];
     const progress = readFlashcardProgress();
+    if (['quick','final'].includes(deck) && progress.topic !== deck) {
+        progress.topic = deck;
+        progress.active = null;
+        progress.order = [];
+    }
+    if (deck === 'quick') {
+        progress.seed = nextFlashcardSeed(progress.seed);
+        progress.revealed = false;
+    }
+    let quickCards = new Map(makeQuickDecisionCards(progress.seed).map(card => [card.id, card]));
+    const cardById = id => theoryCards.get(id) ?? quickCards.get(id);
     show(`<section class="theory-flashcards">
         ${button(t('‹ Learning path'), 'home')}
         <h1>${theoryFlashcardTitle}</h1>
@@ -59,10 +78,13 @@ function openTheoryFlashcards() {
             <label for="flashcard-topic">${t('Choose a topic')}</label>
             <select id="flashcard-topic">
                 <option value="all">${t('All topics')}</option>
+                <option value="final">${t('Final exam flashcards')}</option>
+                <option value="quick">${quickDecisionTitle}</option>
                 ${unitOrder.map(topic => `<option value="${topic}">${units[topic].title}</option>`).join('')}
                 <option value="review" data-flash-review-option></option>
             </select>
             <button type="button" data-flash-shuffle>${t('Shuffle cards')}</button>
+            <button type="button" data-flash-generate hidden>${t('New examples')}</button>
         </div>
         <label class="flashcard-search">${t('Search cards')}
             <input type="search" placeholder="${t('Try period, tributary width, or equations')}">
@@ -82,8 +104,15 @@ function openTheoryFlashcards() {
     const next = root.querySelector('[data-flash-next]');
     const reveal = root.querySelector('[data-flash-reveal]');
     const shuffle = root.querySelector('[data-flash-shuffle]');
+    const generate = root.querySelector('[data-flash-generate]');
     const search = root.querySelector('.flashcard-search input');
     let visibleOrder = [];
+
+    const newExamples = () => {
+        progress.seed = nextFlashcardSeed(progress.seed);
+        quickCards = new Map(makeQuickDecisionCards(progress.seed).map(card => [card.id, card]));
+        progress.revealed = false;
+    };
 
     const render = () => {
         const available = flashcardsInTopic(progress);
@@ -91,7 +120,7 @@ function openTheoryFlashcards() {
         progress.order = [...order, ...available.filter(id => !order.includes(id))];
         const query = flashcardWords(search.value);
         visibleOrder = query.length ? progress.order.filter(id => {
-            const { prompt, answer } = theoryCards.get(id);
+            const { prompt, answer } = cardById(id);
             const words = flashcardWords(`${prompt} ${answer}`);
             return query.every(term => words.some(word => word.startsWith(term)));
         }) : progress.order;
@@ -99,10 +128,11 @@ function openTheoryFlashcards() {
             progress.active = visibleOrder[0] ?? null;
             progress.revealed = false;
         }
-        const card = theoryCards.get(progress.active);
+        const card = cardById(progress.active);
         root.querySelector('[data-flash-review-option]').textContent = t`Review later (${progress.review.length})`;
         controls.hidden = !card;
         shuffle.disabled = visibleOrder.length < 2;
+        generate.hidden = progress.topic !== 'quick';
         previous.disabled = visibleOrder.length < 2;
         next.disabled = previous.disabled;
         reveal.textContent = progress.revealed ? t('Hide answer') : t('Reveal answer');
@@ -117,6 +147,7 @@ function openTheoryFlashcards() {
                 <span>${units[card.topic].title}</span><span>${t`Card ${position} of ${visibleOrder.length}`}</span>
                 </div>
                 <h2>${card.prompt}</h2>
+                ${card.front ? `<figure class="flashcard-front">${card.front()}</figure>` : ''}
                 <div id="flashcard-answer" class="flashcard-answer" ${progress.revealed ? '' : 'hidden'}>
                     <p>${card.answer}</p>${drawing ? `<figure>${drawing}</figure>` : ''}
                 </div>
@@ -140,6 +171,7 @@ function openTheoryFlashcards() {
         progress.topic = topic.value;
         progress.active = null;
         progress.order = [];
+        if (progress.topic === 'quick') newExamples();
         render();
     });
     search.addEventListener('input', render);
@@ -155,6 +187,10 @@ function openTheoryFlashcards() {
         progress.order = progress.order.map(id => visibleOrder.includes(id) ? shuffled[nextIndex++] : id);
         progress.active = shuffled[0];
         progress.revealed = false;
+        render();
+    });
+    generate.addEventListener('click', () => {
+        newExamples();
         render();
     });
     panel.addEventListener('click', event => {

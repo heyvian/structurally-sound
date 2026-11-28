@@ -75,9 +75,10 @@ const diagramExercises = Object.keys(fbdCases).map(kind => ({ ...fbdQuestion(kin
 const trussQuizPractice = makeTrussQuizPractice();
 const trussTaPractice = makeTrussTaPractice();
 const taCoursePractice = makeCourseTaPractice();
+const fullFinalQuestions = makeFullFinalQuestions();
 const questionBank = new Map([
     ...unitQuestions.flat(), ...calculationCards, ...guidedQuestions.flat(),
-    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam, ...diagramExercises, ...trussQuizPractice, ...trussTaPractice, ...taCoursePractice,
+    ...beamPractice, ...beamExam, ...trussPractice, ...trussExam, ...diagramExercises, ...trussQuizPractice, ...trussTaPractice, ...taCoursePractice, ...fullFinalQuestions,
 ].map(question => [question.key, question]));
 
 let session;
@@ -86,7 +87,7 @@ let showGraphAnswer;
 let graphDraft;
 let pageRoute = ['home', ''];
 let practiceResume;
-const languageRoutes = new Set(['home', 'practice', 'practice-menu', 'final', 'beam', 'truss', 'exam', 'weak', 'steel', 'sheet', 'sheet-all', 'quiz-truss-practice', 'flashcards']);
+const languageRoutes = new Set(['home', 'practice', 'practice-menu', 'final', 'beam', 'truss', 'exam', 'weak', 'steel', 'sheet', 'sheet-all', 'quiz-truss-practice', 'flashcards', 'final-full']);
 const languageResumeKey = 'structural-language-resume';
 
 function saveProgress() {
@@ -156,7 +157,7 @@ function focusPage() {
 
 function show(html, hash = '') {
     closeWorkshopRoute();
-    if (hash || location.hash === '#flashcards') history.replaceState(null, '', hash || location.pathname + location.search);
+    if (hash || ['#flashcards', '#final-review'].includes(location.hash)) history.replaceState(null, '', hash || location.pathname + location.search);
     app.innerHTML = html;
     focusPage();
 }
@@ -218,7 +219,7 @@ function home() {
             <h1><span class="hero-brand">Dr. FixBoi®’s</span> <span>Structurally</span> <em>Sound</em></h1>
             <p class="hero-tagline">${t`Teaching you things you don't really need to know but here we are.`}</p>
             <div class="home-start">${button(resume ? t('Resume workshop →') : t('Start learning →'), 'unit', destination, 'primary hero-link')}
-                ${resume ? `<small>${trussWorkshopTitles[destination] ?? workshops[destination]?.title ?? beamLabTitles[destination]}</small>` : ''}</div>
+                ${resume ? `<small>${finalWorkshopTitles[destination] ?? trussWorkshopTitles[destination] ?? workshops[destination]?.title ?? beamLabTitles[destination]}</small>` : ''}</div>
         </div>
         <figure class="hero-scene">
             ${heroVal()}
@@ -259,14 +260,28 @@ function startPractice(i) {
 
 function finalMenu() {
     session = undefined;
+    pageRoute = ['final', ''];
     show(`${button(t('‹ Learning path'), 'home')}
         <article class="lesson final-menu">
             <div class="sectionmark"><span>${t`Final exam studio`}</span></div>
             <div class="topic-heading">
-                <div><h1>${t`Put it all together`}</h1>
+                <div><h1>${t('Final exam review')}</h1>
                     <p>${t`Review the full course or work through a beam or truss from the first sketch to the final check.`}</p></div>
                 <div class="topic-val val-entrance">${valPortrait('guide')}</div>
             </div>
+            <section class="panel final-outline">
+                <h2>${t('Work through the six parts')}</h2>
+                <ol>
+                    <li>${button(t('Final exam flashcards'), 'flashcards', 'final')}</li>
+                    <li>${button(finalWorkshopTitles['final-forces'], 'unit', 'final-forces')}</li>
+                    <li>${button(finalWorkshopTitles['final-axial'], 'unit', 'final-axial')}</li>
+                    <li>${button(finalWorkshopTitles['final-bearing'], 'unit', 'final-bearing')}</li>
+                    <li>${button(finalWorkshopTitles['final-beam'], 'unit', 'final-beam')}</li>
+                    <li>${button(finalWorkshopTitles['final-truss'], 'unit', 'final-truss')}</li>
+                </ol>
+                ${button(fullFinalTitle, 'final-full', '', 'primary')} ${button(quickDecisionTitle, 'flashcards', 'quick')}
+                <p>${t('The full practice exam covers all six parts. Check your answers and worked solutions at the end.')}</p>
+            </section>
             <div class="studio-grid">
                 <section><h2>${t`Guided review`}</h2>
                     ${button(t('Cumulative beam workshop'), 'unit', 9)}
@@ -279,7 +294,7 @@ function finalMenu() {
                 <section><h2>${t`Focus your study`}</h2>${button(t('Target weaker topics'), 'weak')}
                     ${button(t('Cumulative study guide'), 'sheet-all')}</section>
             </div>
-        </article>`);
+        </article>`, '#final-review');
 }
 
 function startIntegratedPractice(kind) {
@@ -536,7 +551,8 @@ function choose(index) {
 
 function grade(question, input) {
     if (question.type === 'number') {
-        return Number.isFinite(input) && Math.abs(input - question.answer) <= Math.max(0.000005, Math.abs(question.answer) * .005);
+        const tolerance = question.tolerance ?? Math.max(0.000005, Math.abs(question.answer) * .005);
+        return Number.isFinite(input) && Math.abs(input - question.answer) <= tolerance;
     }
     if (question.type === 'fbd') {
         return sameForces(question.answer, input);
@@ -594,7 +610,10 @@ function formulaSubstitution(question, values) {
 }
 
 function practiceAnswerText(question, answer) {
-    if (question.type === 'number') return `${numberText(answer)}${question.unit ? ` ${question.unit}` : ''}`;
+    if (question.type === 'number') {
+        const formatted = question.unit === 'kN/cm²' ? new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(answer) : numberText(answer);
+        return `${formatted}${question.unit ? ` ${question.unit}` : ''}`;
+    }
     if (question.type === 'stress') return 'ABCD'[answer];
     if (question.type === 'fbd') return answer.map(i => question.opts[i]).join(' · ');
     if (question.type === 'match') return answer.map((choice, i) => `${question.pairs[i][0]} → ${question.pairs[choice][1]}`).join(' · ');
@@ -726,7 +745,9 @@ const actions = {
         const vertical = value === 'vertical';
         begin(practiceCards(vertical ? trussTaPractice : trussQuizPractice), { mode: 'practice', unit: 8, title: vertical ? trussTaPracticeTitle : trussPracticeTitle });
     },
-    final: finalMenu, beam: () => startIntegratedPractice('beam'), truss: () => startIntegratedPractice('truss'), exam: startExam,
+    final: finalMenu,
+    'final-full': () => begin(fullFinalQuestions, { mode:'exam', title:fullFinalTitle }),
+    beam: () => startIntegratedPractice('beam'), truss: () => startIntegratedPractice('truss'), exam: startExam,
     weak, steel: showSteel, sheet: value => sheet(Number(value)), 'sheet-all': () => sheet(), refresh: openRefresher,
     restraint: key => {
         const comparison = app.querySelector('.buckling-comparison');
@@ -808,15 +829,17 @@ document.getElementById('home').textContent = t('Home');
 document.querySelector('meta[name="description"]').content = t("Teaching you things you don't really need to know but here we are.");
 saveProgress();
 const linkedWorkshop = workshopLink();
-if (linkedWorkshop || location.hash === '#flashcards') {
+if (linkedWorkshop || ['#flashcards', '#final-review'].includes(location.hash)) {
     try { sessionStorage.removeItem(languageResumeKey); } catch { /* Storage may be unavailable. */ }
     if (linkedWorkshop) openWorkshop(...linkedWorkshop);
-    else openTheoryFlashcards();
+    else if (location.hash === '#flashcards') openTheoryFlashcards();
+    else finalMenu();
 } else if (!resumeLanguageRoute()) home();
 
 window.addEventListener('hashchange', () => {
     const match = workshopLink();
     if (match) openWorkshop(...match);
     else if (location.hash === '#flashcards') openTheoryFlashcards();
+    else if (location.hash === '#final-review') finalMenu();
     else if (activeWorkshop !== null || pageRoute[0] === 'flashcards') home();
 });

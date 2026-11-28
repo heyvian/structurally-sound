@@ -202,6 +202,8 @@ function conceptPlate(id) {
         'vector-frame': vectorSketch,
         'moment-reference': () => leverPlate(),
         'reaction-reference': () => beamFigure(loadedSpan(1, 'w'), [0, 1, 2], { isolated: true }).replace(/>1 m</g, '>L<'),
+        'load-notation': () => beamFigure({ L:10, a:0, b:10, points:[{ x:2,p:12 }],
+            udls:[{ s:4,e:7,w:5 }], couples:[{ x:9,m:8 }] }),
         'load-resultant': () => plate(t('Distributed load and equivalent point force'), `
             <path class="diagram-line" d="M92 80H367M92 140H367M92 26H367"/>
             <path class="diagram-arrow" d="M94 28V76M139 28V76M184 28V76M230 28V76M276 28V76M321 28V76M365 28V76M230 93V136"/>
@@ -243,7 +245,13 @@ function conceptPlate(id) {
 }
 
 function practiceDrawing(question, solved = false) {
-    if (question.trussQuiz) return trussQuizPracticeDrawing(question, solved);
+    const hideKnown = !solved && session?.mode === 'exam' && question.key?.startsWith('full-final-');
+    if (question.finalDiagram) return finalTopicFigure(question.finalDiagram);
+    if (question.finalReactions && !hideKnown) {
+        const { RA, RB } = question.finalReactions;
+        return beamFigure(question.b, [0,1,2], { isolated:true, values:{ 0:0, 1:RA, 2:RB } });
+    }
+    if (question.trussQuiz) return trussQuizPracticeDrawing(question, solved, hideKnown);
     if (question.sectionCase) return sectionPracticeFigure(question, solved);
     if (question.type === 'fbd') return fbdDrawing(question, solved ? question.answer : undefined, solved);
     if (question.shearSegment) return shearSegmentFigure(question.shearSegment, { base: solved, crossing: solved, area: solved });

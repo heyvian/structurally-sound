@@ -2,20 +2,30 @@ const quizTrussMembers = ['AB','AC','BC','BD','CD','CE','ED'];
 
 function trussQuizFrame(model, phase, known) {
     const { nodes, width, bay, load } = model;
-    const scale = Math.min(148 / width, 158 / (2 * bay));
+    const depth = model.depth ?? 2 * bay;
+    const upper = model.upper ?? bay;
+    const scale = Math.min(148 / width, (model.mixed ? 145 : 158) / depth);
     const dx = 215 - width * scale / 2;
     const coordinates = Object.fromEntries(Object.entries(nodes).map(([name, [x,y]]) => [name, [dx + x * scale, 216 - y * scale]]));
-    const [ax, ay] = coordinates.A, [bx] = coordinates.B, [, ey] = coordinates.E;
+    const [ax, ay] = coordinates.A, [bx] = coordinates.B, [, ey] = coordinates.E, [, cy] = coordinates.C;
     const points = Object.fromEntries(Object.entries(coordinates).map(([name, [x,y]]) => [name, [x / 4.6, y / 2.76]]));
     const showReactions = phase !== 'whole' || Object.hasOwn(known, 'Aₓ');
     const glyph = (name, x, y, vx, vy, length, labelSide) => forceGlyph({ x, y, dx: vx, dy: vy, name, length, labelSide, unit: 'kN' }, known[name]);
     const moment = phase === 'moment' ? `<path class="truss-quiz-arm" d="M${ax-50} ${ey}H${ax-6}M${ax-47} ${ey}V${ay}H${ax-5}M${ax} ${ay+29}H${bx}"/>
-        <text class="truss-quiz-label" x="${ax-56}" y="${(ey+ay)/2}" text-anchor="end">${numberText(bay*2)} m</text>
+        <text class="truss-quiz-label" x="${ax-56}" y="${(ey+ay)/2}" text-anchor="end">${numberText(depth)} m</text>
         <text class="truss-quiz-label" x="${(ax+bx)/2}" y="${ay+25}" text-anchor="middle">${numberText(width)} m</text>` :
         `<path class="truss-dim" d="M${ax} ${ay+31}H${bx}m0 -4v8M${ax} ${ay+27}v8"/>
         <text x="${(ax+bx)/2}" y="${ay+47}" text-anchor="middle">${numberText(width)} m</text>`;
+    const verticalLoads = model.mixed ? [['E',model.topLoad], ['D',model.sideLoad]].map(([joint,value]) => {
+        const [x,y] = coordinates[joint];
+        return `<path class="diagram-arrow" d="M${x} ${y-47}V${y-8}"/><text class="truss-quiz-label" x="${x+8}" y="${y-37}">${numberText(value)} kN</text>`;
+    }).join('') : '';
     const transfer = phase === 'transfer' ? `<path class="truss-quiz-arm" d="M${ax} ${ey}L${coordinates.D.join(' ')}"/>` : '';
-    return workshopFigure(plate(t('Whole truss with a horizontal load at E'), `
+    const heights = model.mixed ? `<path class="truss-dim" d="M${bx+96} ${ey}V${ay}m-4 0h8M${bx+92} ${cy}h8M${bx+92} ${ey}h8"/>
+        <text x="${bx+104}" y="${(ey+cy)/2+4}">${numberText(upper)} m</text>
+        <text x="${bx+104}" y="${(cy+ay)/2+4}">${numberText(bay)} m</text>` :
+        `<text x="${bx+24}" y="${(ey+ay)/2}">${numberText(bay)} m + ${numberText(upper)} m</text>`;
+    return workshopFigure(plate(model.mixed ? t('Whole truss with horizontal and vertical applied loads') : t('Whole truss with a horizontal load at E'), `
         ${quizTrussMembers.map(name=>{
             const from=coordinates[name[0]], to=coordinates[name[1]], value=known[name];
             const state=Number.isFinite(value) ? (value<0?'compression':'tension') : 'frame';
@@ -24,7 +34,7 @@ function trussQuizFrame(model, phase, known) {
             return `<path class="truss-quiz-member ${state}" d="M${from.join(' ')}L${to.join(' ')}"/>
                 ${Number.isFinite(value) ? `<text class="truss-quiz-label" x="${midX}" y="${midY}">${value>0?'+':''}${numberText(value)}</text>` : ''}`;
         }).join('')}
-        ${transfer}${moment}
+        ${transfer}${moment}${verticalLoads}
         <path class="support-symbol" d="M${ax} ${ay}l-9 13h18zM${bx} ${ay}l-9 13h18z"/>
         <circle class="support-symbol" cx="${bx-5}" cy="${ay+17}" r="2"/><circle class="support-symbol" cx="${bx+5}" cy="${ay+17}" r="2"/>
         ${Object.entries(coordinates).map(([name,[x,y]])=>`<circle class="truss-quiz-node" cx="${x}" cy="${y}" r="4"/>
@@ -33,7 +43,7 @@ function trussQuizFrame(model, phase, known) {
         <text x="${ax-63}" y="${ey-8}">${numberText(load)} kN</text>
         ${showReactions ? glyph('Aₓ',ax,ay,1,0,47) + glyph('Aᵧ',ax,ay,0,-1,41,'left') + glyph('Bᵧ',bx,ay,0,-1,47) : ''}
         ${phase==='moment' ? `<circle class="moment-pivot" cx="${ax}" cy="${ay}" r="6"/>` : ''}
-        <text x="${bx+24}" y="${(ey+ay)/2}">${numberText(bay)} m + ${numberText(bay)} m</text>`, 276), points);
+        ${heights}`, 276), points);
 }
 
 function trussTaFrame(model, phase, known) {
@@ -157,8 +167,21 @@ function trussQuizJoint(detail, known) {
         <tbody>${forces.map(force=>`<tr><th scope="row">${force.name}</th><td ${axis==='x'?'class="truss-quiz-sum"':''}>${component(force,'x')}</td>
             <td ${axis==='y'?'class="truss-quiz-sum"':''}>${component(force,'y')}</td></tr>`).join('')}</tbody></table>
         <p class="truss-quiz-key">${t('Dashed arrows are assumed pulls. Solid arrows show the forces you know.')}${projection ? ` · θ = ${numberText(detail.angle ?? model.angle)}°` : ''}</p>`;
-    drawing.progress = (model.members ? trussTaFrame(model, 'supports', known) : trussQuizFrame(model, 'whole', known)).markup;
+    drawing.progress = trussQuizOverview(model, 'supports', known).markup;
+    if (detail.summary) drawing.tools += mixedMemberSummary(known);
     return drawing;
+}
+
+function trussQuizOverview(model, phase, known) {
+    if (model.finalLink) return linkedForceFrame(model, known);
+    return model.members ? trussTaFrame(model, phase, known) : trussQuizFrame(model, phase, known);
+}
+
+function mixedMemberSummary(known) {
+    return `<table class="section-ledger"><thead><tr><th scope="col">${t('Member')}</th><th scope="col">kN</th></tr></thead>
+        <tbody>${quizTrussMembers.filter(name => Object.hasOwn(known, name)).map(name => `<tr><th scope="row">${name}</th>
+            <td>${numberText(Math.abs(known[name]))} · ${known[name] === 0 ? '0' : known[name] < 0 ? 'C' : 'T'}</td></tr>`).join('')}</tbody></table>
+        <p class="truss-quiz-key">${t('T = tension · C = compression · 0 = zero force')}</p>`;
 }
 
 function trussQuizDrawing(detail, known) {
@@ -167,8 +190,7 @@ function trussQuizDrawing(detail, known) {
         <path class="diagram-line" d="M110 110H235L340 43"/><circle class="truss-quiz-node" cx="235" cy="110" r="5"/>
         <text x="235" y="140" text-anchor="middle">${t('Unloaded joint')}</text>`));
     if (detail.joint) return trussQuizJoint(detail, known);
-    const frame = detail.model.members ? trussTaFrame : trussQuizFrame;
-    return frame(detail.model, detail.phase, known);
+    return trussQuizOverview(detail.model, detail.phase, known);
 }
 
 function trussQuizLearned(workshop, run, i) {
@@ -180,14 +202,16 @@ function trussQuizLearned(workshop, run, i) {
     return known;
 }
 
-function trussQuizPracticeDrawing(question, solved) {
+function trussQuizPracticeDrawing(question, solved, hideKnown = false) {
     const detail=question.trussQuiz;
-    const known=Object.fromEntries((detail.known || []).map(name=>[name,detail.model.forces[name]]));
+    const known=Object.fromEntries((hideKnown ? [] : detail.known || []).map(name=>[name,detail.model.forces[name]]));
     if (solved) known[detail.key]=question.answer;
+    if (hideKnown && detail.joint) return trussQuizOverview(detail.model, 'supports', known).markup;
     const drawing=trussQuizDrawing(detail,known);
     if (solved && detail.recap) {
-        const summary = trussTaFrame(detail.model, 'summary', known);
-        return drawing.markup + (drawing.tools || '') + summary.markup + summary.tools;
+        const summary = trussQuizOverview(detail.model, 'summary', known);
+        const ledger = detail.model.mixed ? mixedMemberSummary(known) : summary.tools || '';
+        return drawing.markup + (drawing.tools || '') + summary.markup + ledger;
     }
     return drawing.markup + (drawing.tools || '');
 }

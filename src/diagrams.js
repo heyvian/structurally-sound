@@ -118,9 +118,8 @@ function graphMarkup(question) {
     let sign = t('Positive shear goes above the baseline.');
     let shapeInstruction = t('Dotted segments still need a shape. After placing all the points, tap a segment or its button to cycle through shapes, or use the dropdown. A positive bow curves downward from the straight line between the points.');
     if (question.kind === 'M') sign = question.positiveMomentUp ? t('Positive moment goes above the baseline.') : t('Positive sagging goes below the baseline.');
-    if (given) shapeInstruction = question.positiveMomentUp ?
-        t('Tap each dotted segment or its button to choose straight or curved. A positive bow curves above the straight line between the points.') :
-        t('Tap each dotted segment or its button to choose straight or curved. A positive bow curves below the straight line between the points.');
+    if (question.positiveMomentUp) shapeInstruction = t('Tap each dotted segment or its button to choose straight or curved. A positive bow curves above the straight line between the points.');
+    else if (given) shapeInstruction = t('Tap each dotted segment or its button to choose straight or curved. A positive bow curves below the straight line between the points.');
     const scale = graphScale(question, []);
     const suggested = [...new Set([...question.answer, ...Array.from({ length: 9 }, (_, i) => scale * (i - 4) / 4)]
         .map(value => Number(fmt(value))))].sort((a, b) => a - b);

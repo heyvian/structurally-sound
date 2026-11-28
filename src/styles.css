@@ -834,3 +834,12 @@ tbody tr:nth-child(even) { background: #f0eee3; }
     .method-panel > summary, .method-label { color: var(--ink); background: white; }
     .method-panel > summary::after { display: none; }
 }
+
+.final-outline { margin: 18px 0; padding: 14px; }
+.final-outline ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 8px 22px; padding-left: 24px; }
+.final-outline li { padding-left: 3px; }
+.final-outline li button { width: 100%; text-align: left; }
+.final-outline p { margin-bottom: 0; }
+.flashcard-front { max-width: 28rem; margin: 0 0 15px; }
+.flashcard-front .diagram { margin: 0; width: 100%; }
+.flashcard-toolbar [hidden] { display: none; }

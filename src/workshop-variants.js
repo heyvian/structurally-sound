@@ -22,6 +22,11 @@ function workshopVersion(index, attempt = 1, run) {
 }
 
 function coreWorkshopVersion(index, attempt, run) {
+    if (Object.hasOwn(finalWorkshopTitles, index)) {
+        const key = `${index}/${attempt}`;
+        if (!repeatVersions.has(key)) repeatVersions.set(key, finalWorkshop(index, attempt));
+        return repeatVersions.get(key);
+    }
     if (Object.hasOwn(trussWorkshopTitles, index)) {
         const key = `${index}/${attempt}`;
         if (!repeatVersions.has(key)) repeatVersions.set(key, index === 'truss-ta' ? trussTaWorkshop(attempt) : trussQuizWorkshop(attempt));
