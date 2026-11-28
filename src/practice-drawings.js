@@ -212,9 +212,11 @@ function conceptPlate(id) {
         'line-of-action': () => plate(t('Same line of action, two points of application'), `
             <path class="diagram-fill" d="M124 64H335V132H124Z"/><path class="diagram-dash" d="M87 97H384"/>
             <path class="diagram-arrow" d="M141 97H209M242 97H310"/><text x="157" y="87">F</text><text x="260" y="87">F</text>`),
-        'vibration': () => plate(t('One complete cycle of vibration'), `<path class="diagram-line" d="M56 94H414M71 28V151"/>
-            <path class="diagram-line" d="M71 94C108 28 133 28 170 94S232 160 269 94S331 28 368 94"/>
-            <path class="diagram-dash" d="M71 130V155M269 118V155M71 149H269"/><text x="164" y="168">T</text><text x="412" y="108">t</text>`),
+        'vibration': () => plate(t('One complete cycle of vibration'), `<path class="diagram-line" d="M56 94H414M71 30V141"/>
+            <path class="diagram-line" d="M71 94C88 94 94 49 121 49S154 94 171 94S194 139 221 139S254 94 271 94S294 49 321 49S354 94 371 94"/>
+            <path class="diagram-dash" d="M121 49V150M321 49V150"/><path class="section-measure" d="M121 150H321m0 -4v8M121 146v8"/>
+            <circle class="section-centroid-mark" cx="121" cy="49" r="4"/><circle class="section-centroid-mark" cx="321" cy="49" r="4"/>
+            <text x="221" y="166" text-anchor="middle">T</text><text x="412" y="108">t</text>`),
         'hanging-weight': () => plate(t('A hanging mass and its two external forces'), `<path class="diagram-fill" d="M187 68H270V121H187Z"/>
             <path class="diagram-arrow" d="M228 68V26M228 121V160"/><text x="239" y="35">T</text><text x="239" y="155">W = mg</text><text x="215" y="100">m</text>`),
         'strain-reference': () => plate(t('Original length and extension of a bar'), `<path class="diagram-fill" d="M86 63H359V112H86Z"/>

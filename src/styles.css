@@ -93,6 +93,8 @@ main { width: min(100%, 75rem); margin: auto; padding: 29px 24px 72px; }
 .flashcard-toolbar { margin-bottom: 14px; }
 .flashcard-toolbar > label { font: 700 13px/1.4 var(--mono); }
 .flashcard-toolbar > select { flex: 1 1 13rem; min-width: 0; max-width: 100%; min-height: 42px; }
+.flashcard-search { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; font: 700 13px/1.4 var(--mono); }
+.flashcard-search input { flex: 1 1 14rem; min-width: 0; max-width: 100%; min-height: 42px; padding: 7px 10px; font: 1rem system-ui, sans-serif; color: var(--ink); background: var(--white); border: 1px solid var(--ink); }
 .flashcard-panel {
     min-height: 13rem;
     padding: clamp(15px, 3vw, 28px);
